@@ -1,0 +1,321 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { Mail, Lock, User, Building } from "lucide-react";
+
+export default function SignupForm() {
+  const router = useRouter();
+
+  const [formData, setFormData] = useState({
+    userType: "patient" as "patient" | "clinic",
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    clinicName: "",
+    country: "",
+    terms: false,
+  });
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match!");
+      return;
+    }
+
+    if (!formData.terms) {
+      alert("Please accept the Terms of Service and Privacy Policy.");
+      return;
+    }
+
+    if (formData.userType === "patient") {
+      router.push("/dashboard/patient");
+    } else {
+      router.push("/dashboard/clinic");
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-background px-4 py-12">
+      <div className="mx-auto w-full max-w-md">
+        {/* Header */}
+        <div className="mb-8 text-center">
+          <Link href="/" className="text-3xl font-bold text-primary">
+            Clinic Air
+          </Link>
+
+          <h2 className="mt-6 text-3xl font-bold">
+            Create an account
+          </h2>
+
+          <p className="mt-2 text-muted-foreground">
+            Join the Clinic Air community
+          </p>
+        </div>
+
+        {/* Card */}
+        <div className="rounded-lg border border-border bg-card p-8">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* User Type */}
+            <div>
+              <label className="mb-2 block font-medium">
+                I am a:
+              </label>
+
+              <div className="grid grid-cols-2 gap-2">
+                {(["patient", "clinic"] as const).map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        userType: type,
+                      })
+                    }
+                    className={`rounded-lg border-2 px-4 py-2 capitalize transition-all ${
+                      formData.userType === type
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border hover:border-primary/50"
+                    }`}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Patient Fields */}
+            {formData.userType === "patient" ? (
+              <div>
+                <label className="mb-2 block font-medium">
+                  Full Name
+                </label>
+
+                <div className="relative">
+                  <User
+                    size={20}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                  />
+
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        name: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+            ) : (
+              <>
+                {/* Clinic Name */}
+                <div>
+                  <label className="mb-2 block font-medium">
+                    Clinic Name
+                  </label>
+
+                  <div className="relative">
+                    <Building
+                      size={20}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    />
+
+                    <input
+                      type="text"
+                      required
+                      placeholder="Enter clinic name"
+                      value={formData.clinicName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          clinicName: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
+                </div>
+
+                {/* Country */}
+                <div>
+                  <label className="mb-2 block font-medium">
+                    Country
+                  </label>
+
+                  <select
+                    required
+                    value={formData.country}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        country: e.target.value,
+                      })
+                    }
+                    className="w-full rounded-lg border border-border bg-input-background px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    <option value="">Select country</option>
+                    <option value="turkey">Turkey</option>
+                    <option value="thailand">Thailand</option>
+                    <option value="mexico">Mexico</option>
+                    <option value="india">India</option>
+                    <option value="colombia">Colombia</option>
+                  </select>
+                </div>
+              </>
+            )}
+
+            {/* Email */}
+            <div>
+              <label className="mb-2 block font-medium">
+                Email
+              </label>
+
+              <div className="relative">
+                <Mail
+                  size={20}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+
+                <input
+                  type="email"
+                  required
+                  placeholder="Enter your email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      email: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className="mb-2 block font-medium">
+                Password
+              </label>
+
+              <div className="relative">
+                <Lock
+                  size={20}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+
+                <input
+                  type="password"
+                  required
+                  placeholder="Create a password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      password: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className="mb-2 block font-medium">
+                Confirm Password
+              </label>
+
+              <div className="relative">
+                <Lock
+                  size={20}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                />
+
+                <input
+                  type="password"
+                  required
+                  placeholder="Confirm your password"
+                  value={formData.confirmPassword}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      confirmPassword: e.target.value,
+                    })
+                  }
+                  className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            </div>
+
+            {/* Terms */}
+            <div>
+              <label className="flex cursor-pointer items-start gap-2">
+                <input
+                  type="checkbox"
+                  checked={formData.terms}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      terms: e.target.checked,
+                    })
+                  }
+                  className="mt-1 h-4 w-4 rounded border-border"
+                />
+
+                <span className="text-sm text-muted-foreground">
+                  I agree to the{" "}
+                  <Link
+                    href="#"
+                    className="text-primary hover:underline"
+                  >
+                    Terms of Service
+                  </Link>{" "}
+                  and{" "}
+                  <Link
+                    href="#"
+                    className="text-primary hover:underline"
+                  >
+                    Privacy Policy
+                  </Link>
+                </span>
+              </label>
+            </div>
+
+            {/* Submit */}
+            <button
+              type="submit"
+              className="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90"
+            >
+              Create Account
+            </button>
+          </form>
+
+          {/* Footer */}
+          <div className="mt-6 text-center">
+            <p className="text-muted-foreground">
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="text-primary hover:underline"
+              >
+                Sign in
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
