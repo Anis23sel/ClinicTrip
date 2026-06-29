@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useCallback, Suspense } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense, useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Search, SlidersHorizontal, Star, MapPin, DollarSign, ChevronDown, Calendar, X } from "lucide-react";
@@ -72,6 +72,37 @@ const mockClinics = [
   { id: 2, name: "Bangkok Dental Excellence", city: "Bangkok", country: "Thailand", rating: 4.9, procedures: ["Dental Implants", "Veneers", "Teeth Whitening", "Full Mouth Reconstruction"], startingPrice: 1200 },
   { id: 3, name: "Cancun Cosmetic Surgery", city: "Cancun", country: "Mexico", rating: 4.7, procedures: ["BBL", "Tummy Tuck", "Facelift", "Breast Lift"], startingPrice: 3500 },
 ];
+
+function normalizeText(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function getProcedureCategory(procedure: string) {
+  const normalized = normalizeText(procedure);
+  if (normalized.includes("dental") || normalized.includes("teeth") || normalized.includes("implant") || normalized.includes("veneer") || normalized.includes("crown") || normalized.includes("bridge") || normalized.includes("invisalign") || normalized.includes("canal")) {
+    return "dental";
+  }
+  if (normalized.includes("hair") || normalized.includes("transplant")) {
+    return "hair-transplant";
+  }
+  return "plastic-surgery";
+}
+
+function getBodyPartProcedures(part: string | null) {
+  if (!part) return [];
+
+  const map: Record<string, string[]> = {
+    face: ["Rhinoplasty", "Facelift", "Eyelid Surgery", "Neck Lift"],
+    nose: ["Rhinoplasty"],
+    teeth: ["Dental Implants", "Veneers", "Teeth Whitening", "Dental Crowns", "Full Mouth Reconstruction", "Dental Bridges", "Invisalign", "Root Canal"],
+    chest: ["Breast Augmentation", "Breast Reduction", "Breast Lift"],
+    abdomen: ["Tummy Tuck", "Liposuction", "Mommy Makeover"],
+    arms: ["Arm Lift"],
+    legs: ["Thigh Lift"],
+  };
+
+  return map[part] ?? [];
+}
 
 // ── Date Range Picker ─────────────────────────────────────────────────────────
 
@@ -260,12 +291,91 @@ function SearchContent() {
     sortBy: "popularity",
   });
 
-  const removeSurgery = (s: string) => setFilters({ ...filters, surgeryTypes: filters.surgeryTypes.filter((x) => x !== s) });
+  const removeSurgery = (s: string) =>
+    setFilters((current) => ({
+      ...current,
+      surgeryTypes: current.surgeryTypes.filter((x) => x !== s),
+    }));
 
   const selectedSurgeriesWithPrices = filters.surgeryTypes.map((name) => {
     const s = allSurgeries.find((x) => x.name === name);
     return { name, price: s?.price ?? 0 };
   });
+
+  const activeBodyPartProcedures = useMemo(() => getBodyPartProcedures(selectedBodyPart), [selectedBodyPart]);
+
+  const filteredClinics = useMemo(() => {
+    const keywordText = keyword.trim().toLowerCase();
+    let clinics = [...mockClinics];
+
+    if (keywordText) {
+      clinics = clinics.filter((clinic) => {
+        const haystack = [clinic.name, ...clinic.procedures].join(" ").toLowerCase();
+        return haystack.includes(keywordText);
+      });
+    }
+
+    if (country) {
+      clinics = clinics.filter((clinic) => clinic.country === country);
+    }
+
+    if (city) {
+      clinics = clinics.filter((clinic) => clinic.city === city);
+    }
+
+    if (filters.category) {
+      clinics = clinics.filter((clinic) =>
+        clinic.procedures.some((procedure) => getProcedureCategory(procedure) === filters.category)
+      );
+    }
+
+    if (filters.surgeryTypes.length) {
+      clinics = clinics.filter((clinic) =>
+        filters.surgeryTypes.some((selectedSurgery) =>
+          clinic.procedures.some((procedure) =>
+            normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
+            normalizeText(selectedSurgery).includes(normalizeText(procedure))
+          )
+        )
+      );
+    }
+
+    if (filters.priceRange[1] < 20000) {
+      clinics = clinics.filter((clinic) => clinic.startingPrice <= filters.priceRange[1]);
+    }
+
+    if (filters.rating > 0) {
+      clinics = clinics.filter((clinic) => clinic.rating >= filters.rating);
+    }
+
+    if (activeBodyPartProcedures.length) {
+      clinics = clinics.filter((clinic) =>
+        clinic.procedures.some((procedure) =>
+          activeBodyPartProcedures.some((bodyPartProcedure) =>
+            normalizeText(procedure).includes(normalizeText(bodyPartProcedure)) ||
+            normalizeText(bodyPartProcedure).includes(normalizeText(procedure))
+          )
+        )
+      );
+    }
+
+    const sortedClinics = [...clinics];
+    switch (filters.sortBy) {
+      case "price-low":
+        sortedClinics.sort((a, b) => a.startingPrice - b.startingPrice);
+        break;
+      case "price-high":
+        sortedClinics.sort((a, b) => b.startingPrice - a.startingPrice);
+        break;
+      case "rating":
+        sortedClinics.sort((a, b) => b.rating - a.rating);
+        break;
+      default:
+        sortedClinics.sort((a, b) => b.rating - a.rating);
+    }
+
+    return sortedClinics;
+  }, [activeBodyPartProcedures, city, country, filters.category, filters.priceRange, filters.rating, filters.sortBy, filters.surgeryTypes, keyword]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -335,7 +445,7 @@ function SearchContent() {
                       ].map(({ value, label }) => (
                         <button
                           key={value}
-                          onClick={() => setFilters({ ...filters, category: value, surgeryTypes: [] })}
+                          onClick={() => setFilters((current) => ({ ...current, category: value, surgeryTypes: [] }))}
                           className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${filters.category === value ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/40"}`}
                         >
                           {label}
@@ -348,7 +458,7 @@ function SearchContent() {
                     <label className="block mb-3 text-sm font-semibold">Procedures</label>
                     <SurgeryFilter
                       selected={filters.surgeryTypes}
-                      onChange={(s) => setFilters({ ...filters, surgeryTypes: s })}
+                      onChange={(s) => setFilters((current) => ({ ...current, surgeryTypes: s }))}
                       category={filters.category}
                     />
                   </div>
@@ -362,7 +472,7 @@ function SearchContent() {
                     <input
                       type="range" min="0" max="20000" step="500"
                       value={filters.priceRange[1]}
-                      onChange={(e) => setFilters({ ...filters, priceRange: [0, parseInt(e.target.value)] })}
+                      onChange={(e) => setFilters((current) => ({ ...current, priceRange: [0, parseInt(e.target.value)] }))}
                       className="w-full accent-primary"
                     />
                   </div>
@@ -371,20 +481,20 @@ function SearchContent() {
                     <label className="block mb-2 text-sm font-semibold">Minimum Rating</label>
                     <div className="flex gap-1">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <button key={star} onClick={() => setFilters({ ...filters, rating: star })} className="p-0.5">
+                        <button key={star} onClick={() => setFilters((current) => ({ ...current, rating: star }))} className="p-0.5">
                           <Star size={20} className={star <= filters.rating ? "fill-yellow-400 text-yellow-400" : "text-gray-300"} />
                         </button>
                       ))}
                       {filters.rating > 0 && (
-                        <button onClick={() => setFilters({ ...filters, rating: 0 })} className="text-xs text-muted-foreground ml-1 hover:text-destructive">clear</button>
+                        <button onClick={() => setFilters((current) => ({ ...current, rating: 0 }))} className="text-xs text-muted-foreground ml-1 hover:text-destructive">clear</button>
                       )}
                     </div>
                   </div>
-
-                  <div>
+ 
+                  {/* <div>
                     <label className="block mb-3 text-sm font-semibold">Select Body Part</label>
                     <BodyPartSelector onSelectBodyPart={(part) => setSelectedBodyPart(part)} selectedPart={selectedBodyPart} />
-                  </div>
+                  </div> */}
                 </div>
               </div>
             </aside>
@@ -409,11 +519,11 @@ function SearchContent() {
 
             <div className="flex items-center justify-between mb-5">
               <p className="text-muted-foreground text-sm">
-                Showing <span className="font-semibold text-foreground">{mockClinics.length}</span> clinics
+                Showing <span className="font-semibold text-foreground">{filteredClinics.length}</span> clinics
               </p>
               <select
                 value={filters.sortBy}
-                onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
+                onChange={(e) => setFilters((current) => ({ ...current, sortBy: e.target.value }))}
                 className="px-3 py-2 bg-card rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
               >
                 <option value="popularity">Most Popular</option>
@@ -424,7 +534,12 @@ function SearchContent() {
             </div>
 
             <div className="grid gap-5">
-              {mockClinics.map((clinic) => (
+              {filteredClinics.length === 0 ? (
+                <div className="bg-card rounded-xl border border-border p-10 text-center text-muted-foreground">
+                  No clinics match your selected filters. Try broadening your criteria.
+                </div>
+              ) : (
+                filteredClinics.map((clinic) => (
                 <Link
                   key={clinic.id}
                   href={`/clinic/${clinic.id}`}
@@ -460,7 +575,8 @@ function SearchContent() {
                     </div>
                   </div>
                 </Link>
-              ))}
+                ))
+              )}
             </div>
           </div>
         </div>
