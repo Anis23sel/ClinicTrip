@@ -11,64 +11,64 @@ export default function Navbar() {
 
   const navLinks = [
     { href: "/about", label: "About us" },
-    {
-      href: "/search?category=plastic-surgery",
-      label: "Plastic surgeries",
-    },
-    {
-      href: "/search?category=dental",
-      label: "Dental",
-    },
-    {
-      href: "/search?category=hair-transplant",
-      label: "Hair Transplant",
-    },
   ];
+
+  const languageOptions = {
+  EN: { flag: "🇬🇧", label: "English" },
+  FR: { flag: "🇫🇷", label: "Français" },
+  ES: { flag: "🇪🇸", label: "Español" },
+  TR: { flag: "🇹🇷", label: "Türkçe" },
+  AR: { flag: "🇸🇦", label: "العربية" },
+};
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/" className="shrink-0">
-          <span className="text-2xl font-bold text-primary">
-            Clinic Trip
-          </span>
-        </Link>
+       {/* Logo + Language + Currency */}
+<div className="flex items-center gap-6">
+  <Link href="/" className="shrink-0">
+    <span className="text-2xl font-bold text-primary">
+      Clinic Trip
+    </span>
+  </Link>
+
+  {/* Desktop Language */}
+  <div className="hidden md:flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
+    <Globe size={16} className="text-muted-foreground" />
+
+    <select
+      value={language}
+      onChange={(e) => setLanguage(e.target.value)}
+      className="cursor-pointer border-none bg-transparent text-sm outline-none"
+    >
+      <option value="EN">EN</option>
+      <option value="FR">FR</option>
+      <option value="ES">ES</option>
+      <option value="TR">TR</option>
+      <option value="AR">AR</option>
+    </select>
+  </div>
+
+  {/* Desktop Currency */}
+  <div className="hidden md:flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
+    <DollarSign size={16} className="text-muted-foreground" />
+
+    <select
+      value={currency}
+      onChange={(e) => setCurrency(e.target.value)}
+      className="cursor-pointer border-none bg-transparent text-sm outline-none"
+    >
+      <option value="USD">USD</option>
+      <option value="EUR">EUR</option>
+      <option value="GBP">GBP</option>
+      <option value="TRY">TRY</option>
+    </select>
+  </div>
+</div>
 
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-5 md:flex">
-          {/* Language */}
-          <div className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
-            <Globe size={16} className="text-muted-foreground" />
 
-            <select
-              value={language}
-              onChange={(e) => setLanguage(e.target.value)}
-              className="cursor-pointer border-none bg-transparent text-sm outline-none"
-            >
-              <option value="EN">EN</option>
-              <option value="FR">FR</option>
-              <option value="ES">ES</option>
-              <option value="TR">TR</option>
-              <option value="AR">AR</option>
-            </select>
-          </div>
-
-          {/* Currency */}
-          <div className="flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
-            <DollarSign size={16} className="text-muted-foreground" />
-
-            <select
-              value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
-              className="cursor-pointer border-none bg-transparent text-sm outline-none"
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="TRY">TRY</option>
-            </select>
-          </div>
 
           <div className="h-5 w-px bg-border" />
 
@@ -86,7 +86,7 @@ export default function Navbar() {
             href="/search"
             className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground transition-opacity hover:opacity-90"
           >
-            Start now
+            Search
           </Link>
 
           <div className="h-5 w-px bg-border" />

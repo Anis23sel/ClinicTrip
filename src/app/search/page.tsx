@@ -263,7 +263,7 @@ function SurgeryFilter({ selected, onChange, category }: { selected: string[]; o
                   />
                   <span className="text-sm">{surgery.name}</span>
                 </div>
-                <span className="text-xs text-primary font-medium shrink-0">from ${surgery.price.toLocaleString()}</span>
+                
               </label>
             ))}
           </div>

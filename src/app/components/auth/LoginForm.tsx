@@ -32,7 +32,7 @@ export default function LoginForm() {
         {/* Header */}
         <div className="mb-8 text-center">
           <Link href="/" className="text-3xl font-bold text-primary">
-            Clinic Air
+            ClinicTrip
           </Link>
 
           <h2 className="mt-6 text-3xl font-bold">
