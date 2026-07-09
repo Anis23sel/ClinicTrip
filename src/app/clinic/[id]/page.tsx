@@ -153,7 +153,24 @@ export default function ClinicPage() {
                       </div>
                       <div>
                         <h3 className="text-xl font-semibold mb-3">Select Doctor</h3>
+                        <p className="text-sm text-muted-foreground mb-4">You can choose your doctor later if you prefer.</p>
                         <div className="space-y-3">
+                          <label
+                            className={`flex gap-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${booking.doctorId === "" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+                          >
+                            <input
+                              type="radio"
+                              name="doctor"
+                              value=""
+                              checked={booking.doctorId === ""}
+                              onChange={(e) => setBooking({ ...booking, doctorId: e.target.value })}
+                              className="mt-1 accent-primary"
+                            />
+                            <div>
+                              <h4 className="font-semibold">Choose the doctor later</h4>
+                              <p className="text-muted-foreground text-sm">We’ll help you select the right specialist after your inquiry.</p>
+                            </div>
+                          </label>
                           {clinic.doctors.map((doctor) => (
                             <label
                               key={doctor.id}
