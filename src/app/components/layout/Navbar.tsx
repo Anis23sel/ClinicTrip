@@ -14,7 +14,7 @@ export default function Navbar() {
    FR: { flag: "fr", label: "Français" },
    ES: { flag: "es", label: "Español" },
    TR: { flag: "tr", label: "Türkçe" },
-    AR: { flag: "ar", label: "العربية" }, 
+    AR: { flag: "sa", label: "العربية" }, 
   } as const;
   const [currency, setCurrency] = useState("USD");
 
