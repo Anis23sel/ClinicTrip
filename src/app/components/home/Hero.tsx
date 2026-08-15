@@ -7,7 +7,7 @@ export default function Hero() {
       <div className="max-w-7xl mx-auto">
         <div className="max-w-3xl">
           <h1 className="mb-6 text-5xl font-bold md:text-6xl">
-            Your Medical Journey Starts Here
+            Your medical journey starts here
           </h1>
 
           <p className="mb-8 text-xl text-primary-foreground/90">
