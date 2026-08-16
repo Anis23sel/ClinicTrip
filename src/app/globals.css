@@ -54,3 +54,14 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.clinic-calendar .rdp-months {
+  display: flex;
+  flex-wrap: nowrap !important;
+  gap: 1.5rem;
+  justify-content: center;
+}
+
+.clinic-calendar .rdp-month {
+  margin: 0;
+}

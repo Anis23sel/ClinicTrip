@@ -1,8 +1,11 @@
 "use client";
-import { useState } from "react";
-import { Star, MapPin, Award, Car, Plane, Check } from "lucide-react";
+import { useState, type CSSProperties } from "react";
+import { Star, MapPin, Award } from "lucide-react";
 import Link from "next/link";
-import  BookingInquiryModal from "../../components/booking/BookingInquiryModal";
+import BookingInquiryModal from "../../components/booking/BookingInquiryModal";
+import { DayPicker, DateRange } from "react-day-picker";
+import "react-day-picker/style.css";
+import { format } from "date-fns";
 
 type BookingTab = "clinic";
 
@@ -79,6 +82,21 @@ export default function ClinicPage() {
   const selectedDoctor = clinic.doctors.find((d) => d.id === booking.doctorId);
   const surgeryLabel = selectedDoctor ? `${clinic.procedureName} with ${selectedDoctor.name}` : clinic.procedureName;
 
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: booking.startDate ? new Date(booking.startDate) : undefined,
+    to: booking.endDate ? new Date(booking.endDate) : undefined,
+  });
+
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    setDateRange(range);
+
+    setBooking((prev) => ({
+      ...prev,
+      startDate: range?.from ? format(range.from, "yyyy-MM-dd") : "",
+      endDate: range?.to ? format(range.to, "yyyy-MM-dd") : "",
+    }));
+  };
+
   return (
     <>
       <BookingInquiryModal
@@ -149,6 +167,7 @@ export default function ClinicPage() {
                             </div>
                           </div>
                           <div className="text-2xl font-bold text-primary">${clinic.procedurePrice.toLocaleString()}</div>
+                          <div className="text-sm text-muted-foreground">Payment at the clinic</div>
                         </div>
                       </div>
                       <div>
@@ -193,52 +212,69 @@ export default function ClinicPage() {
                           ))}
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
-  {/* From */}
-  <div>
-    <label className="block text-sm font-medium mb-2">
-      From
-    </label>
+                      <div className="space-y-4">
+                        <label className="block text-sm font-medium">Dates</label>
 
-    <input
-      type="date"
-      value={booking.startDate ?? ""}
-      onChange={(e) =>
-        setBooking((prev) => ({
-          ...prev,
-          startDate: e.target.value,
-          endDate:
-            prev.endDate && prev.endDate < e.target.value
-              ? ""
-              : prev.endDate,
-        }))
-      }
-      min={new Date().toISOString().split("T")[0]}
-      className="w-full px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm"
-    />
-  </div>
-
-  {/* To */}
-  <div>
-    <label className="block text-sm font-medium mb-2">
-      To
-    </label>
-
-    <input
-      type="date"
-      value={booking.endDate ?? ""}
-      onChange={(e) =>
-        setBooking((prev) => ({
-          ...prev,
-          endDate: e.target.value,
-        }))
-      }
-      min={booking.startDate || new Date().toISOString().split("T")[0]}
-      disabled={!booking.startDate}
-      className="w-full px-4 py-3 bg-input-background rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-ring text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-    />
-  </div>
-</div>
+                        <div className="rounded-lg border border-border bg-input-background p-3 sm:p-4">
+                          <div className="overflow-x-auto">
+                            <DayPicker
+                              mode="range"
+                              selected={dateRange}
+                              onSelect={handleDateRangeChange}
+                              disabled={{ before: new Date() }}
+                              numberOfMonths={2}
+                              pagedNavigation
+                              captionLayout="dropdown"
+                              className="clinic-calendar mx-auto"
+                              style={
+                                {
+                                  "--rdp-accent-color": "#391419",
+                                  "--rdp-accent-background-color": "rgba(57, 20, 25, 0.12)",
+                                  "--rdp-range_start-color": "#ffffff",
+                                  "--rdp-range_end-color": "#ffffff",
+                                  "--rdp-range_middle-color": "#391419",
+                                  "--rdp-range_middle-background-color": "rgba(57, 20, 25, 0.12)",
+                                  "--rdp-selected-border": "1px solid #391419",
+                                } as CSSProperties
+                              }
+                              styles={{
+                                months: {
+                                  display: "flex",
+                                  flexDirection: "row",
+                                  gap: "1.5rem",
+                                  justifyContent: "center",
+                                  alignItems: "flex-start",
+                                },
+                                month: {
+                                  margin: 0,
+                                },
+                              }}
+                              modifiersStyles={{
+                                range_start: {
+                                  backgroundColor: "#391419",
+                                  color: "#ffffff",
+                                  borderRadius: "9999px",
+                                },
+                                range_end: {
+                                  backgroundColor: "#391419",
+                                  color: "#ffffff",
+                                  borderRadius: "9999px",
+                                },
+                                range_middle: {
+                                  backgroundColor: "rgba(57, 20, 25, 0.12)",
+                                  color: "#391419",
+                                  borderRadius: 0,
+                                },
+                                selected: {
+                                  backgroundColor: "#391419",
+                                  color: "#ffffff",
+                                  borderRadius: "9999px",
+                                },
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </div>
                       <div>
                         <h3 className="text-xl font-semibold mb-3">Certifications</h3>
                         <div className="grid grid-cols-2 gap-3">
@@ -261,14 +297,10 @@ export default function ClinicPage() {
             {/* Right Sidebar */}
             <div className="space-y-5">
               <div className="bg-primary/10 rounded-xl border-2 border-primary p-6">
-                <h3 className="font-semibold text-lg mb-4">Booking Summary</h3>
-                <div className="text-sm">
-                  <p className="text-muted-foreground">Starting price</p>
-                  <div className="font-bold text-2xl text-primary mb-2">${clinic.procedurePrice.toLocaleString()}</div>
-                  <p className="text-sm text-muted-foreground">Sign in and start now</p>
-                </div>
-                <Link href="/login" className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold">
-                  Sign in and start now
+                
+                {/*<h3 className="font-semibold text-lg mb-4">Booking Summary</h3>*/}
+                <Link href="/SearchLoginPage" className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold">
+                   Contact the clinic and start now
                 </Link>
               </div>
 

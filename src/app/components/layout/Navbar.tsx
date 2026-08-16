@@ -3,98 +3,123 @@
 import { useState } from "react";
 import Link from "next/link";
 import "flag-icons/css/flag-icons.min.css";
-import { Menu, X, Globe, DollarSign, ChevronDown } from "lucide-react";
+import { Menu, X, Globe, ChevronDown } from "lucide-react";
+
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
+  const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
+
   const [language, setLanguage] = useState("EN");
+  const [currency, setCurrency] = useState("USD");
 
   const languageOptions = {
-   EN: { flag: "gb", label: "English" },
-   FR: { flag: "fr", label: "Français" },
-   ES: { flag: "es", label: "Español" },
-   TR: { flag: "tr", label: "Türkçe" },
-    AR: { flag: "sa", label: "العربية" }, 
+    EN: { flag: "gb", label: "English" },
+    FR: { flag: "fr", label: "Français" },
+    ES: { flag: "es", label: "Español" },
+    TR: { flag: "tr", label: "Türkçe" },
+    AR: { flag: "sa", label: "العربية" },
   } as const;
-  const [currency, setCurrency] = useState("USD");
+
+const currencyOptions = {
+  USD: { symbol: "$", label: "USD - $" },
+  EUR: { symbol: "€", label: "EUR - €" },
+  GBP: { symbol: "£", label: "GBP - £" },
+  TRY: { symbol: "₺", label: "TRY - ₺" },
+} as const;
 
   const navLinks = [
     { href: "/about", label: "About us" },
   ];
 
-
-
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-       {/* Logo + Language + Currency */}
-<div className="flex items-center gap-6">
-  <Link href="/" className="shrink-0">
-    <span className="text-2xl font-bold text-primary">
-      Clinic Trip
-    </span>
-  </Link>
 
-  {/* Desktop Language */}
-  <div className="relative hidden md:block">
+        {/* Logo + Language + Currency */}
+        <div className="flex items-center gap-6">
+          <Link href="/" className="shrink-0">
+            <span className="text-2xl font-bold text-primary">
+              Clinic Trip
+            </span>
+          </Link>
+
+          {/* Desktop Language */}
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setLanguageMenuOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
+            >
+              <span
+                className={`fi fi-${
+                  languageOptions[
+                    language as keyof typeof languageOptions
+                  ].flag
+                }`}
+              />
+
+              <ChevronDown size={16} />
+            </button>
+
+            {languageMenuOpen && (
+              <div className="absolute left-0 mt-2 w-48 overflow-hidden rounded-lg border bg-card shadow-lg">
+                {Object.entries(languageOptions).map(([code, lang]) => (
+                  <button
+                    key={code}
+                    onClick={() => {
+                      setLanguage(code);
+                      setLanguageMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
+                  >
+                    <span className={`fi fi-${lang.flag}`} />
+
+                    <span>{lang.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          
+          {/* Desktop Currency */}
+<div className="relative hidden md:block">
   <button
-    onClick={() => setLanguageMenuOpen((prev) => !prev)}
+    onClick={() => setCurrencyMenuOpen((prev) => !prev)}
     className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
   >
-   
-
-    <span
-      className={`fi fi-${languageOptions[language as keyof typeof languageOptions].flag}`}
-    />
-
-    <span>
-      {languageOptions[language as keyof typeof languageOptions].label}
+    {/* Show only the currency symbol when closed */}
+    <span className="text-sm font-medium">
+      {currencyOptions[currency as keyof typeof currencyOptions].symbol}
     </span>
 
     <ChevronDown size={16} />
   </button>
 
-  {languageMenuOpen && (
-    <div className="absolute left-0 mt-2 w-48 overflow-hidden rounded-lg border bg-card shadow-lg">
-      {Object.entries(languageOptions).map(([code, lang]) => (
+  {currencyMenuOpen && (
+    <div className="absolute left-0 mt-2 w-40 overflow-hidden rounded-lg border bg-card shadow-lg">
+      {Object.entries(currencyOptions).map(([code, curr]) => (
         <button
           key={code}
           onClick={() => {
-            setLanguage(code);
-            setLanguageMenuOpen(false);
+            setCurrency(code);
+            setCurrencyMenuOpen(false);
           }}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
         >
-          <span className={`fi fi-${lang.flag}`} />
+        
 
-          <span>{lang.label}</span>
+          {/* Full currency name */}
+          <span>{curr.label}</span>
         </button>
       ))}
     </div>
   )}
 </div>
-
-  {/* Desktop Currency */}
-  <div className="hidden md:flex cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent">
-    <DollarSign size={16} className="text-muted-foreground" />
-
-    <select
-      value={currency}
-      onChange={(e) => setCurrency(e.target.value)}
-      className="cursor-pointer border-none bg-transparent text-sm outline-none"
-    >
-      <option value="USD">USD</option>
-      <option value="EUR">EUR</option>
-      <option value="GBP">GBP</option>
-      <option value="TRY">TRY</option>
-    </select>
-  </div>
-</div>
+        </div>
 
         {/* Desktop Navigation */}
         <div className="hidden items-center gap-5 md:flex">
-
-
           <div className="h-5 w-px bg-border" />
 
           {navLinks.map((link) => (
@@ -145,6 +170,8 @@ export default function Navbar() {
         <div className="border-t border-border bg-card md:hidden">
           <div className="space-y-3 px-4 py-4">
             <div className="flex gap-3">
+
+              {/* Mobile Language */}
               <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border bg-input-background px-3 py-2">
                 <Globe size={16} className="text-muted-foreground" />
 
@@ -161,9 +188,8 @@ export default function Navbar() {
                 </select>
               </div>
 
+              {/* Mobile Currency */}
               <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border bg-input-background px-3 py-2">
-                <DollarSign size={16} className="text-muted-foreground" />
-
                 <select
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value)}
