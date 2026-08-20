@@ -4,13 +4,18 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, Building } from "lucide-react";
+import { createClient } from "@/app/utils/supabase/client";
 
 export default function SignupForm() {
   const router = useRouter();
+  const supabase = createClient();
+
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     userType: "patient" as "patient" | "clinic",
     name: "",
+    gender: "",
     email: "",
     password: "",
     confirmPassword: "",
@@ -19,25 +24,107 @@ export default function SignupForm() {
     terms: false,
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
+  const handleSubmit = async (
+  e: React.FormEvent<HTMLFormElement>
+) => {
+  e.preventDefault();
 
-    if (formData.password !== formData.confirmPassword) {
-      alert("Passwords do not match!");
+  if (formData.password !== formData.confirmPassword) {
+    alert("Passwords do not match!");
+    return;
+  }
+
+  if (!formData.terms) {
+    alert("Please accept the Terms of Service and Privacy Policy.");
+    return;
+  }
+
+  setLoading(true);
+
+  // Create the authentication user
+  const { data, error } = await supabase.auth.signUp({
+    email: formData.email,
+    password: formData.password,
+  });
+
+  if (error) {
+    alert(error.message);
+    setLoading(false);
+    return;
+  }
+
+  if (!data.user) {
+    alert("Something went wrong creating your account.");
+    setLoading(false);
+    return;
+  }
+
+  const userId = data.user.id;
+
+// Create the profile
+const { data: profile, error: profileError } = await supabase
+  .from("profiles")
+  .insert({
+    user_id: userId,
+    role: formData.userType,
+  })
+  .select("id")
+  .single();
+
+if (profileError) {
+  alert(profileError.message);
+  setLoading(false);
+  return;
+}
+
+const profileId = profile.id;
+
+  // Create patient record
+  if (formData.userType === "patient") {
+    const nameParts = formData.name.trim().split(" ");
+
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ");
+
+    const { error: patientError } = await supabase
+  .from("patients")
+  .insert({
+    profile_id: profileId,
+    first_name: firstName,
+    last_name: lastName,
+    gender: formData.gender,
+  });
+
+    if (patientError) {
+      alert(patientError.message);
+      setLoading(false);
       return;
     }
 
-    if (!formData.terms) {
-      alert("Please accept the Terms of Service and Privacy Policy.");
+    router.push("/dashboard/patient");
+  }
+
+  // Create clinic record
+  if (formData.userType === "clinic") {
+    const { error: clinicError } = await supabase
+    .from("clinics")
+    .insert({
+    profile_id: profileId,
+    clinic_name: formData.clinicName,
+    country: formData.country,
+  });
+
+    if (clinicError) {
+      alert(clinicError.message);
+      setLoading(false);
       return;
     }
 
-    if (formData.userType === "patient") {
-      router.push("/dashboard/patient");
-    } else {
-      router.push("/dashboard/clinic");
-    }
-  };
+    router.push("/dashboard/clinic");
+  }
+
+  setLoading(false);
+};
 
   return (
     <div className="min-h-screen bg-background px-4 py-12">
@@ -90,34 +177,61 @@ export default function SignupForm() {
             </div>
 
             {/* Patient Fields */}
-            {formData.userType === "patient" ? (
-              <div>
-                <label className="mb-2 block font-medium">
-                  Full Name
-                </label>
+{formData.userType === "patient" ? (
+  <>
+    {/* Full Name */}
+    <div>
+      <label className="mb-2 block font-medium">
+        Full Name
+      </label>
 
-                <div className="relative">
-                  <User
-                    size={20}
-                    className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
-                  />
+      <div className="relative">
+        <User
+          size={20}
+          className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+        />
 
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter your full name"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        name: e.target.value,
-                      })
-                    }
-                    className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              </div>
-            ) : (
+        <input
+          type="text"
+          required
+          placeholder="Enter your full name"
+          value={formData.name}
+          onChange={(e) =>
+            setFormData({
+              ...formData,
+              name: e.target.value,
+            })
+          }
+          className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+        />
+      </div>
+    </div>
+
+    {/* Gender */}
+    <div>
+      <label className="mb-2 block font-medium">
+        Gender
+      </label>
+
+      <select
+        required
+        value={formData.gender}
+        onChange={(e) =>
+          setFormData({
+            ...formData,
+            gender: e.target.value,
+          })
+        }
+        className="w-full rounded-lg border border-border bg-input-background px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
+      >
+        <option value="">Select gender</option>
+        <option value="male">Male</option>
+        <option value="female">Female</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+  </>
+) : (
               <>
                 {/* Clinic Name */}
                 <div>
@@ -295,11 +409,12 @@ export default function SignupForm() {
 
             {/* Submit */}
             <button
-              type="submit"
-              className="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Create Account
-            </button>
+  type="submit"
+  disabled={loading}
+  className="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {loading ? "Creating account..." : "Create Account"}
+</button>
           </form>
 
           {/* Footer */}

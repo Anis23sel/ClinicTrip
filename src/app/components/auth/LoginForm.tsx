@@ -4,34 +4,82 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
+import { createClient } from "@/app/utils/supabase/client";
 
 export default function LoginForm() {
   const router = useRouter();
+  const supabase = createClient();
+
+  const [loading, setLoading] = useState(false);
 
   const [formData, setFormData] = useState({
     email: "",
     password: "",
-    userType: "patient" as "patient" | "clinic" | "admin",
   });
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (
+    e: React.FormEvent<HTMLFormElement>
+  ) => {
     e.preventDefault();
 
-    if (formData.userType === "patient") {
-      router.push("/dashboard/patient");
-    } else if (formData.userType === "clinic") {
-      router.push("/dashboard/clinic");
-    } else {
-      router.push("/dashboard/admin");
+    setLoading(true);
+
+    // Sign in with Supabase Auth
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: formData.email,
+      password: formData.password,
+    });
+
+    if (error) {
+      alert(error.message);
+      setLoading(false);
+      return;
     }
+
+    if (!data.user) {
+      alert("Unable to sign in.");
+      setLoading(false);
+      return;
+    }
+
+    // Get the user's profile and role
+    const { data: profile, error: profileError } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("user_id", data.user.id)
+      .single();
+
+    if (profileError) {
+      alert(profileError.message);
+      setLoading(false);
+      return;
+    }
+
+    // Redirect based on the actual role stored in the database
+    if (profile.role === "patient") {
+      router.push("/dashboard/patient");
+    } else if (profile.role === "clinic") {
+      router.push("/dashboard/clinic");
+    } else if (profile.role === "admin") {
+      router.push("/dashboard/admin");
+    } else {
+      alert("Invalid account role.");
+      await supabase.auth.signOut();
+    }
+
+    setLoading(false);
   };
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md">
+
         {/* Header */}
         <div className="mb-8 text-center">
-          <Link href="/" className="text-3xl font-bold text-primary">
+          <Link
+            href="/"
+            className="text-3xl font-bold text-primary"
+          >
             ClinicTrip
           </Link>
 
@@ -46,35 +94,10 @@ export default function LoginForm() {
 
         {/* Card */}
         <div className="rounded-lg border border-border bg-card p-8">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* User Type */}
-            <div>
-              <label className="mb-2 block font-medium">
-                I am a:
-              </label>
-
-              <div className="grid grid-cols-3 gap-2">
-                {(["patient", "clinic", "admin"] as const).map((type) => (
-                  <button
-                    key={type}
-                    type="button"
-                    onClick={() =>
-                      setFormData({
-                        ...formData,
-                        userType: type,
-                      })
-                    }
-                    className={`rounded-lg border-2 px-4 py-2 capitalize transition-all ${
-                      formData.userType === type
-                        ? "border-primary bg-primary/10 text-primary"
-                        : "border-border hover:border-primary/50"
-                    }`}
-                  >
-                    {type}
-                  </button>
-                ))}
-              </div>
-            </div>
+          <form
+            onSubmit={handleSubmit}
+            className="space-y-6"
+          >
 
             {/* Email */}
             <div>
@@ -132,13 +155,14 @@ export default function LoginForm() {
               </div>
             </div>
 
-            {/* Remember */}
+            {/* Remember / Forgot Password */}
             <div className="flex items-center justify-between">
               <label className="flex cursor-pointer items-center gap-2">
                 <input
                   type="checkbox"
                   className="h-4 w-4 rounded border-border"
                 />
+
                 <span className="text-sm">
                   Remember me
                 </span>
@@ -155,9 +179,10 @@ export default function LoginForm() {
             {/* Submit */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90"
+              disabled={loading}
+              className="w-full rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Sign In
+              {loading ? "Signing in..." : "Sign In"}
             </button>
           </form>
 

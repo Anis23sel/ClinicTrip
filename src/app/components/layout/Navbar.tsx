@@ -1,17 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import "flag-icons/css/flag-icons.min.css";
 import { Menu, X, Globe, ChevronDown } from "lucide-react";
+import { createClient } from "@/app/utils/supabase/client";
 
 export default function Navbar() {
+  const supabase = createClient();
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const [currencyMenuOpen, setCurrencyMenuOpen] = useState(false);
 
   const [language, setLanguage] = useState("EN");
   const [currency, setCurrency] = useState("USD");
+
+  const [user, setUser] = useState<any>(null);
+  const [dashboardPath, setDashboardPath] = useState<string | null>(null);
+  const [loadingUser, setLoadingUser] = useState(true);
 
   const languageOptions = {
     EN: { flag: "gb", label: "English" },
@@ -21,16 +28,74 @@ export default function Navbar() {
     AR: { flag: "sa", label: "العربية" },
   } as const;
 
-const currencyOptions = {
-  USD: { symbol: "$", label: "USD - $" },
-  EUR: { symbol: "€", label: "EUR - €" },
-  GBP: { symbol: "£", label: "GBP - £" },
-  TRY: { symbol: "₺", label: "TRY - ₺" },
-} as const;
+  const currencyOptions = {
+    USD: { symbol: "$", label: "USD - $" },
+    EUR: { symbol: "€", label: "EUR - €" },
+    GBP: { symbol: "£", label: "GBP - £" },
+    TRY: { symbol: "₺", label: "TRY - ₺" },
+  } as const;
 
   const navLinks = [
     { href: "/about", label: "About us" },
   ];
+
+  // Check the current user
+  useEffect(() => {
+    const getUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+
+      setUser(user);
+
+      if (user) {
+        // Get the user's role from profiles
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profile?.role === "patient") {
+          setDashboardPath("/dashboard/patient");
+        } else if (profile?.role === "clinic") {
+          setDashboardPath("/dashboard/clinic");
+        } else if (profile?.role === "admin") {
+          setDashboardPath("/dashboard/admin");
+        }
+      }
+
+      setLoadingUser(false);
+    };
+
+    getUser();
+
+    // Listen for login/logout changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      setUser(session?.user ?? null);
+
+      if (!session?.user) {
+        setDashboardPath(null);
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, [supabase]);
+
+  // Sign out
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+
+    setUser(null);
+    setDashboardPath(null);
+    setMobileMenuOpen(false);
+
+    window.location.href = "/";
+  };
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border bg-card">
@@ -81,41 +146,40 @@ const currencyOptions = {
             )}
           </div>
 
-          
           {/* Desktop Currency */}
-<div className="relative hidden md:block">
-  <button
-    onClick={() => setCurrencyMenuOpen((prev) => !prev)}
-    className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
-  >
-    {/* Show only the currency symbol when closed */}
-    <span className="text-sm font-medium">
-      {currencyOptions[currency as keyof typeof currencyOptions].symbol}
-    </span>
+          <div className="relative hidden md:block">
+            <button
+              onClick={() => setCurrencyMenuOpen((prev) => !prev)}
+              className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
+            >
+              <span className="text-sm font-medium">
+                {
+                  currencyOptions[
+                    currency as keyof typeof currencyOptions
+                  ].symbol
+                }
+              </span>
 
-    <ChevronDown size={16} />
-  </button>
+              <ChevronDown size={16} />
+            </button>
 
-  {currencyMenuOpen && (
-    <div className="absolute left-0 mt-2 w-40 overflow-hidden rounded-lg border bg-card shadow-lg">
-      {Object.entries(currencyOptions).map(([code, curr]) => (
-        <button
-          key={code}
-          onClick={() => {
-            setCurrency(code);
-            setCurrencyMenuOpen(false);
-          }}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
-        >
-        
-
-          {/* Full currency name */}
-          <span>{curr.label}</span>
-        </button>
-      ))}
-    </div>
-  )}
-</div>
+            {currencyMenuOpen && (
+              <div className="absolute left-0 mt-2 w-40 overflow-hidden rounded-lg border bg-card shadow-lg">
+                {Object.entries(currencyOptions).map(([code, curr]) => (
+                  <button
+                    key={code}
+                    onClick={() => {
+                      setCurrency(code);
+                      setCurrencyMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
+                  >
+                    <span>{curr.label}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Desktop Navigation */}
@@ -141,19 +205,46 @@ const currencyOptions = {
 
           <div className="h-5 w-px bg-border" />
 
-          <Link
-            href="/login"
-            className="text-sm text-foreground transition-colors hover:text-primary"
-          >
-            Sign in
-          </Link>
+          {/* Authentication */}
+          {!loadingUser && (
+            <>
+              {!user ? (
+                <>
+                  <Link
+                    href="/login"
+                    className="text-sm text-foreground transition-colors hover:text-primary"
+                  >
+                    Sign in
+                  </Link>
 
-          <Link
-            href="/signup"
-            className="rounded-lg border border-primary px-4 py-2 text-sm text-primary transition-all hover:bg-primary hover:text-primary-foreground"
-          >
-            Join us
-          </Link>
+                  <Link
+                    href="/signup"
+                    className="rounded-lg border border-primary px-4 py-2 text-sm text-primary transition-all hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Join us
+                  </Link>
+                </>
+              ) : (
+                <>
+                  {dashboardPath && (
+                    <Link
+                      href={dashboardPath}
+                      className="text-sm text-foreground transition-colors hover:text-primary"
+                    >
+                      Profile
+                    </Link>
+                  )}
+
+                  <button
+                    onClick={handleSignOut}
+                    className="rounded-lg border border-primary px-4 py-2 text-sm text-primary transition-all hover:bg-primary hover:text-primary-foreground"
+                  >
+                    Sign out
+                  </button>
+                </>
+              )}
+            </>
+          )}
         </div>
 
         {/* Mobile Toggle */}
@@ -169,11 +260,15 @@ const currencyOptions = {
       {mobileMenuOpen && (
         <div className="border-t border-border bg-card md:hidden">
           <div className="space-y-3 px-4 py-4">
+
             <div className="flex gap-3">
 
               {/* Mobile Language */}
               <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border bg-input-background px-3 py-2">
-                <Globe size={16} className="text-muted-foreground" />
+                <Globe
+                  size={16}
+                  className="text-muted-foreground"
+                />
 
                 <select
                   value={language}
@@ -204,6 +299,7 @@ const currencyOptions = {
             </div>
 
             <div className="space-y-2 border-t border-border pt-3">
+
               {navLinks.map((link) => (
                 <Link
                   key={link.href}
@@ -223,23 +319,50 @@ const currencyOptions = {
                 Start now
               </Link>
 
-              <div className="flex gap-3 border-t border-border pt-2">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 py-2 text-center text-foreground transition-colors hover:text-primary"
-                >
-                  Sign in
-                </Link>
+              {/* Mobile Authentication */}
+              {!loadingUser && (
+                <div className="flex gap-3 border-t border-border pt-2">
 
-                <Link
-                  href="/signup"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="flex-1 rounded-lg border border-primary px-4 py-2 text-center text-primary"
-                >
-                  Join us
-                </Link>
-              </div>
+                  {!user ? (
+                    <>
+                      <Link
+                        href="/login"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex-1 py-2 text-center text-foreground transition-colors hover:text-primary"
+                      >
+                        Sign in
+                      </Link>
+
+                      <Link
+                        href="/signup"
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="flex-1 rounded-lg border border-primary px-4 py-2 text-center text-primary"
+                      >
+                        Join us
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      {dashboardPath && (
+                        <Link
+                          href={dashboardPath}
+                          onClick={() => setMobileMenuOpen(false)}
+                          className="flex-1 rounded-lg bg-primary px-4 py-2 text-center text-primary-foreground"
+                        >
+                          Profile
+                        </Link>
+                      )}
+
+                      <button
+                        onClick={handleSignOut}
+                        className="flex-1 rounded-lg border border-primary px-4 py-2 text-center text-primary"
+                      >
+                        Sign out
+                      </button>
+                    </>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -299,7 +299,7 @@ export default function ClinicPage() {
               <div className="bg-primary/10 rounded-xl border-2 border-primary p-6">
                 
                 {/*<h3 className="font-semibold text-lg mb-4">Booking Summary</h3>*/}
-                <Link href="/SearchLoginPage" className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold">
+                <Link href="/login" className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold">
                    Contact the clinic and start now
                 </Link>
               </div>
