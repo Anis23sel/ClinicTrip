@@ -37,7 +37,7 @@ export default function LoginForm() {
     }
 
     if (!data.user) {
-      alert("Unable to sign in.");
+      alert("Unable to sign in. Please try again.");
       setLoading(false);
       return;
     }
