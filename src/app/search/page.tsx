@@ -7,7 +7,7 @@ import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
 import SearchLocationSelector from "../components/search/SearchLocationSelector";
 import SearchProcedureFilter from "../components/search/SearchProcedureFilter";
 import ClinicResultCard from "../components/search/ClinicResultCard";
-import { getBodyPartProcedures, getProcedureCategory, normalizeText, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type Surgery } from "../components/search/searchTypes";
+import { getBodyPartProcedures, getProcedureCategory, normalizeText, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type DateRange, type Surgery } from "../components/search/searchTypes";
 
 const supabase = createClient();
 
