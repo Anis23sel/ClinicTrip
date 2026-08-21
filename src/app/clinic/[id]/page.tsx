@@ -1,7 +1,7 @@
 "use client";
 import { useState, type CSSProperties } from "react";
 import { Star, MapPin, Award } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import BookingInquiryModal from "../../components/booking/BookingInquiryModal";
 import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
@@ -52,9 +52,10 @@ const mockClinicData = {
 };
 
 export default function ClinicPage() {
+  const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const supabase = createClient();
-  const clinic = mockClinicData;
+  const clinic = { ...mockClinicData, id };
   const [activeTab, setActiveTab] = useState<BookingTab>("clinic");
   const [inquiryOpen, setInquiryOpen] = useState(false);
   const [booking, setBooking] = useState({

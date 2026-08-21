@@ -3,6 +3,9 @@
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Send, X } from "lucide-react";
 import InquirySuccess from "./InquirySuccess";
+import { createClient } from "@/app/utils/supabase/client";
+
+const supabase = createClient();
 
 interface BookingInquiryModalProps {
   isOpen: boolean;
@@ -11,8 +14,6 @@ interface BookingInquiryModalProps {
   clinicId: string;
   surgeryName: string;
   preferredDate?: string;
-  userEmail?: string;
-  userName?: string;
 }
 
 export default function BookingInquiryModal({
@@ -22,8 +23,6 @@ export default function BookingInquiryModal({
   clinicId,
   surgeryName,
   preferredDate,
-  userEmail,
-  userName,
 }: BookingInquiryModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -47,8 +46,24 @@ export default function BookingInquiryModal({
 
     setSubmitted(false);
     setError("");
-    setForm((prev) => ({ ...prev, name: userName, email: userEmail }));
-  }, [surgeryName, preferredDate, isOpen, userEmail, userName]);
+    setForm((prev) => ({ ...prev, name: "", email: "" }));
+
+    if (!isOpen) return;
+
+    const loadSignedInUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setError("You must be signed in to send an inquiry.");
+        return;
+      }
+
+      const metadata = user.user_metadata || {};
+      const name = metadata.full_name || metadata.name || metadata.display_name || user.email?.split("@")[0] || "";
+      setForm((prev) => ({ ...prev, name, email: user.email || "" }));
+    };
+
+    loadSignedInUser();
+  }, [surgeryName, preferredDate, isOpen, supabase]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -82,7 +97,6 @@ export default function BookingInquiryModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
-
     const response = await fetch("/api/booking-inquiry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

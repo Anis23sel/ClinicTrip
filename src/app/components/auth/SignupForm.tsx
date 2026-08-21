@@ -139,6 +139,7 @@ const { data: profile, error: profileError } = await supabase
     phone: formData.phone,
     country: formData.country,
     city_id: formData.cityId,
+    email: formData.email,
   });
 
       if (clinicError) {
