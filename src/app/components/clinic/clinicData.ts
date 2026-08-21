@@ -10,6 +10,10 @@ export interface ClinicProcedure {
 export interface ClinicData {
   id: string | number;
   name: string;
+  city?: string;
+  country?: string;
+  rating?: number;
+  reviewCount?: number;
   procedures: ClinicProcedure[];
 }
 
