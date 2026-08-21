@@ -29,7 +29,7 @@ export default function SignupForm() {
   });
 
   const [cities, setCities] = useState<
-    { id: string; name: string }[]
+    { id: string; city: string }[]
   >([]);
 
   useEffect(() => {
