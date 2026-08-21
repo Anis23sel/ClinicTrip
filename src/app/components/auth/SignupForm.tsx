@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock, User, Building } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 
+const supabase = createClient();
+
 export default function SignupForm() {
   const router = useRouter();
-  const supabase = createClient();
 
   const [loading, setLoading] = useState(false);
 
@@ -21,8 +22,33 @@ export default function SignupForm() {
     confirmPassword: "",
     clinicName: "",
     country: "",
+    address: "",
+    phone: "",
+    cityId: "",
     terms: false,
   });
+
+  const [cities, setCities] = useState<
+    { id: string; name: string }[]
+  >([]);
+
+  useEffect(() => {
+    const fetchCities = async () => {
+      const { data, error } = await supabase
+        .from("cities")
+        .select("id, city")
+        .order("city");
+
+      if (error) {
+        console.error("Error fetching cities:", error);
+        return;
+      }
+
+      setCities(data || []);
+    };
+
+    fetchCities();
+  }, []);
 
   const handleSubmit = async (
   e: React.FormEvent<HTMLFormElement>
@@ -41,25 +67,24 @@ export default function SignupForm() {
 
   setLoading(true);
 
-  // Create the authentication user
-  const { data, error } = await supabase.auth.signUp({
-    email: formData.email,
-    password: formData.password,
-  });
+  try {
+    // Create the authentication user
+    const { data, error } = await supabase.auth.signUp({
+      email: formData.email,
+      password: formData.password,
+    });
 
-  if (error) {
-    alert(error.message);
-    setLoading(false);
-    return;
-  }
+    if (error) {
+      alert(error.message);
+      return;
+    }
 
-  if (!data.user) {
-    alert("Something went wrong creating your account.");
-    setLoading(false);
-    return;
-  }
+    if (!data.user) {
+      alert("Something went wrong creating your account.");
+      return;
+    }
 
-  const userId = data.user.id;
+    const userId = data.user.id;
 
 // Create the profile
 const { data: profile, error: profileError } = await supabase
@@ -71,13 +96,12 @@ const { data: profile, error: profileError } = await supabase
   .select("id")
   .single();
 
-if (profileError) {
-  alert(profileError.message);
-  setLoading(false);
-  return;
-}
+    if (profileError) {
+      alert(profileError.message);
+      return;
+    }
 
-const profileId = profile.id;
+    const profileId = profile.id;
 
   // Create patient record
   if (formData.userType === "patient") {
@@ -95,35 +119,42 @@ const profileId = profile.id;
     gender: formData.gender,
   });
 
-    if (patientError) {
-      alert(patientError.message);
-      setLoading(false);
-      return;
-    }
+      if (patientError) {
+        alert(patientError.message);
+        return;
+      }
 
     router.push("/dashboard/patient");
   }
 
   // Create clinic record
   if (formData.userType === "clinic") {
+    console.log("Selected city ID:", formData.cityId);
     const { error: clinicError } = await supabase
-    .from("clinics")
-    .insert({
+  .from("clinics")
+  .insert({
     profile_id: profileId,
     clinic_name: formData.clinicName,
+    address: formData.address,
+    phone: formData.phone,
     country: formData.country,
+    city_id: formData.cityId,
   });
 
-    if (clinicError) {
-      alert(clinicError.message);
-      setLoading(false);
-      return;
-    }
+      if (clinicError) {
+        alert(clinicError.message);
+        return;
+      }
 
     router.push("/dashboard/clinic");
   }
 
-  setLoading(false);
+  } catch (error) {
+    console.error("Signup failed:", error);
+    alert("Something went wrong. Please try again.");
+  } finally {
+    setLoading(false);
+  }
 };
 
   return (
@@ -132,7 +163,7 @@ const profileId = profile.id;
         {/* Header */}
         <div className="mb-8 text-center">
           <Link href="/" className="text-3xl font-bold text-primary">
-            Clinic Air
+            ClinicTrip
           </Link>
 
           <h2 className="mt-6 text-3xl font-bold">
@@ -278,16 +309,96 @@ const profileId = profile.id;
                     }
                     className="w-full rounded-lg border border-border bg-input-background px-4 py-3 focus:outline-none focus:ring-2 focus:ring-ring"
                   >
-                    <option value="">Select country</option>
+                    
                     <option value="turkey">Turkey</option>
-                    <option value="thailand">Thailand</option>
-                    <option value="mexico">Mexico</option>
-                    <option value="india">India</option>
-                    <option value="colombia">Colombia</option>
                   </select>
                 </div>
               </>
             )}
+
+{/* City */}
+<div>
+  <label className="mb-2 block font-medium">
+    City
+  </label>
+
+  <select
+    required
+    value={formData.cityId}
+    onChange={(e) =>
+      setFormData({
+        ...formData,
+        cityId: e.target.value,
+      })
+    }
+    className="w-full rounded-lg border border-border bg-input-background px-4 py-3 text-black focus:outline-none focus:ring-2 focus:ring-ring"
+  >
+    <option value="" className="text-black">
+      Select city
+    </option>
+
+    {cities.map((city) => (
+      <option
+        key={city.id}
+        value={city.id}
+        className="text-black"
+      >
+        {city.city}
+      </option>
+    ))}
+  </select>
+</div>
+
+            {/* Address */}
+<div>
+  <label className="mb-2 block font-medium">
+    Address
+  </label>
+
+  <div className="relative">
+    <Building
+      size={20}
+      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+    />
+
+    <input
+      type="text"
+      required
+      placeholder="Enter clinic address"
+      value={formData.address}
+      onChange={(e) =>
+        setFormData({
+          ...formData,
+          address: e.target.value,
+        })
+      }
+      className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+    />
+  </div>
+</div>
+
+{/* Phone */}
+<div>
+  <label className="mb-2 block font-medium">
+    Phone
+  </label>
+
+  <div className="relative">
+    <input
+      type="tel"
+      required
+      placeholder="Enter clinic phone number"
+      value={formData.phone}
+      onChange={(e) =>
+        setFormData({
+          ...formData,
+          phone: e.target.value,
+        })
+      }
+      className="w-full rounded-lg border border-border bg-input-background py-3 px-4 focus:outline-none focus:ring-2 focus:ring-ring"
+    />
+  </div>
+</div>
 
             {/* Email */}
             <div>

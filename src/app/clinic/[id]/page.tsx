@@ -1,8 +1,9 @@
 "use client";
 import { useState, type CSSProperties } from "react";
 import { Star, MapPin, Award } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import BookingInquiryModal from "../../components/booking/BookingInquiryModal";
+import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
@@ -51,6 +52,8 @@ const mockClinicData = {
 };
 
 export default function ClinicPage() {
+  const router = useRouter();
+  const supabase = createClient();
   const clinic = mockClinicData;
   const [activeTab, setActiveTab] = useState<BookingTab>("clinic");
   const [inquiryOpen, setInquiryOpen] = useState(false);
@@ -82,6 +85,17 @@ export default function ClinicPage() {
   const selectedDoctor = clinic.doctors.find((d) => d.id === booking.doctorId);
   const surgeryLabel = selectedDoctor ? `${clinic.procedureName} with ${selectedDoctor.name}` : clinic.procedureName;
 
+  const handleContactClinic = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      router.push("/login");
+      return;
+    }
+
+    setInquiryOpen(true);
+  };
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: booking.startDate ? new Date(booking.startDate) : undefined,
     to: booking.endDate ? new Date(booking.endDate) : undefined,
@@ -103,6 +117,7 @@ export default function ClinicPage() {
         isOpen={inquiryOpen}
         onClose={() => setInquiryOpen(false)}
         clinicName={clinic.name}
+        clinicId={String(clinic.id)}
         surgeryName={surgeryLabel}
         preferredDate={booking.startDate}
       />
@@ -299,9 +314,13 @@ export default function ClinicPage() {
               <div className="bg-primary/10 rounded-xl border-2 border-primary p-6">
                 
                 {/*<h3 className="font-semibold text-lg mb-4">Booking Summary</h3>*/}
-                <Link href="/login" className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold">
+                <button
+                  type="button"
+                  onClick={handleContactClinic}
+                  className="w-full mt-5 inline-block px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity text-center font-semibold"
+                >
                    Contact the clinic and start now
-                </Link>
+                </button>
               </div>
 
               <div className="bg-card rounded-xl border border-border p-5">

@@ -1,24 +1,32 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { CheckCircle, Send, X } from "lucide-react";
+import { Send, X } from "lucide-react";
+import InquirySuccess from "./InquirySuccess";
 
 interface BookingInquiryModalProps {
   isOpen: boolean;
   onClose: () => void;
   clinicName: string;
+  clinicId: string;
   surgeryName: string;
   preferredDate?: string;
+  userEmail?: string;
+  userName?: string;
 }
 
 export default function BookingInquiryModal({
   isOpen,
   onClose,
   clinicName,
+  clinicId,
   surgeryName,
   preferredDate,
+  userEmail,
+  userName,
 }: BookingInquiryModalProps) {
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
 
   const [form, setForm] = useState({
     name: "",
@@ -38,7 +46,9 @@ export default function BookingInquiryModal({
     }));
 
     setSubmitted(false);
-  }, [surgeryName, preferredDate, isOpen]);
+    setError("");
+    setForm((prev) => ({ ...prev, name: userName, email: userEmail }));
+  }, [surgeryName, preferredDate, isOpen, userEmail, userName]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -69,12 +79,23 @@ export default function BookingInquiryModal({
 
   if (!isOpen) return null;
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setSubmitted(true);
+    setError("");
 
-    // We'll connect this to the backend later.
-    console.log(form);
+    const response = await fetch("/api/booking-inquiry", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clinicId, ...form }),
+    });
+
+    if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      setError(result?.error || "We could not send your inquiry. Please try again.");
+      return;
+    }
+
+    setSubmitted(true);
   };
 
   return (
@@ -105,29 +126,7 @@ export default function BookingInquiryModal({
         </div>
 
         {submitted ? (
-          <div className="space-y-4 p-8 text-center">
-            <CheckCircle
-              size={56}
-              className="mx-auto text-green-500"
-            />
-
-            <h3 className="text-xl font-semibold">
-              Inquiry Sent!
-            </h3>
-
-            <p className="text-muted-foreground">
-              Your inquiry has been forwarded to{" "}
-              <strong>{clinicName}</strong>. They will contact you
-              shortly using the email address you provided.
-            </p>
-
-            <button
-              onClick={onClose}
-              className="mt-4 rounded-lg bg-primary px-6 py-3 text-primary-foreground transition-opacity hover:opacity-90"
-            >
-              Close
-            </button>
-          </div>
+          <InquirySuccess clinicName={clinicName} onClose={onClose} />
         ) : (
           <form
             onSubmit={handleSubmit}
@@ -237,6 +236,12 @@ export default function BookingInquiryModal({
               will contact you via email—no phone numbers are shared
               without your consent.
             </p>
+
+            {error && (
+              <p role="alert" className="text-sm text-destructive">
+                {error}
+              </p>
+            )}
 
             <button
               type="submit"
