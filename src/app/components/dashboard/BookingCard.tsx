@@ -4,9 +4,11 @@ import Link from "next/link";
 import { CheckCircle, XCircle, Clock } from "lucide-react";
 import AccommodationTab from "../booking/AccommodationTab";
 import TransferTab from "../booking/TransferTab";
+import BookingInquiryModal from "../booking/BookingInquiryModal";
 
 type Booking = {
-  id: number;
+  id: string | number;
+  clinicId: string;
   clinicName: string;
   procedure: string;
   doctor: string;
@@ -31,6 +33,7 @@ const statusConfig: Record<Booking['status'], { color: string; icon: JSX.Element
 export default function BookingCard({ booking }: Props) {
   const cfg = statusConfig[booking.status];
   const [expanded, setExpanded] = useState(false);
+  const [inquiryOpen, setInquiryOpen] = useState(false);
 
   const sampleAccommodations = [
     {
@@ -65,7 +68,17 @@ export default function BookingCard({ booking }: Props) {
     transferPackage: false,
   });
   return (
-    <div className="bg-card rounded-lg border border-border p-6">
+    <>
+      <BookingInquiryModal
+        isOpen={inquiryOpen}
+        onClose={() => setInquiryOpen(false)}
+        clinicName={booking.clinicName}
+        clinicId={booking.clinicId}
+        requestId={String(booking.id)}
+        surgeryName={booking.procedure}
+        preferredDate={booking.preferredDate}
+      />
+      <div className="bg-card rounded-lg border border-border p-6">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h3 className="text-xl font-semibold mb-1">{booking.clinicName}</h3>
@@ -102,6 +115,9 @@ export default function BookingCard({ booking }: Props) {
       <div className="flex gap-3">
         <Link href={`/bookings/${booking.id}`} className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors">View Details</Link>
         {booking.status === "pending" && (
+          <button type="button" onClick={() => setInquiryOpen(true)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity">Complete inquiry</button>
+        )}
+        {booking.status === "pending" && (
           <button className="px-4 py-2 border border-destructive text-destructive rounded-lg hover:bg-destructive hover:text-destructive-foreground transition-all">Cancel</button>
         )}
       </div>
@@ -128,6 +144,7 @@ export default function BookingCard({ booking }: Props) {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

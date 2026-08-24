@@ -12,6 +12,7 @@ interface BookingInquiryModalProps {
   onClose: () => void;
   clinicName: string;
   clinicId: string;
+  requestId?: string;
   surgeryName: string;
   preferredDate?: string;
 }
@@ -21,6 +22,7 @@ export default function BookingInquiryModal({
   onClose,
   clinicName,
   clinicId,
+  requestId,
   surgeryName,
   preferredDate,
 }: BookingInquiryModalProps) {
@@ -100,7 +102,7 @@ export default function BookingInquiryModal({
     const response = await fetch("/api/booking-inquiry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clinicId, ...form }),
+      body: JSON.stringify({ clinicId, requestId, ...form }),
     });
 
     if (!response.ok) {

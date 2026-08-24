@@ -6,12 +6,15 @@ import type { ClinicResult } from "./searchTypes";
 
 interface ClinicResultCardProps {
   clinic: ClinicResult;
+  selectedProcedure?: string;
 }
 
-export default function ClinicResultCard({ clinic }: ClinicResultCardProps) {
+export default function ClinicResultCard({ clinic, selectedProcedure }: ClinicResultCardProps) {
+  const procedure = selectedProcedure || clinic.procedures[0] || "";
+
   return (
     <Link
-      href={`/clinic/${clinic.id}`}
+      href={`/clinic/${clinic.id}${procedure ? `?procedure=${encodeURIComponent(procedure)}` : ""}`}
       className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
     >
       <div className="flex flex-col md:flex-row">

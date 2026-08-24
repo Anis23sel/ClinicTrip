@@ -436,8 +436,22 @@ function SearchContent() {
                   No clinics match your selected filters. Try broadening your criteria.
                 </div>
               ) : (
-                filteredClinics.map((clinic) => <ClinicResultCard key={clinic.id} clinic={clinic} />)
-              )}
+                filteredClinics.map((clinic) => {
+                  const selectedProcedure = filters.surgeryTypes.find((selectedSurgery) =>
+                    clinic.procedures.some((procedure) =>
+                      normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
+                      normalizeText(selectedSurgery).includes(normalizeText(procedure))
+                    )
+                  );
+
+                  return (
+                    <ClinicResultCard
+                      key={clinic.id}
+                      clinic={clinic}
+                      selectedProcedure={selectedProcedure}
+                    />
+                  );
+                }))}
             </div>
           </div>
         </div>

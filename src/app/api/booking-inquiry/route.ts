@@ -23,6 +23,24 @@ async function getClinic(supabase: ReturnType<typeof createClient>, clinicId: st
   return data;
 }
 
+async function getPatientId(supabase: ReturnType<typeof createClient>, userId: string) {
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("user_id", userId)
+    .single();
+  if (profileError || !profile) return null;
+
+  const { data: patient, error: patientError } = await supabase
+    .from("patients")
+    .select("id")
+    .eq("profile_id", profile.id)
+    .maybeSingle();
+  if (patientError || !patient) return null;
+
+  return patient.id;
+}
+
 export async function GET(request: Request) {
   const supabase = createClient(await cookies());
   const user = await getAuthenticatedUser(supabase);
@@ -54,8 +72,14 @@ export async function POST(request: Request) {
   }
 
   const body = await request.json();
-  const clinic = await getClinic(supabase, String(body.clinicId || ""));
+  const clinicId = String(body.clinicId || "");
+  const clinic = await getClinic(supabase, clinicId);
   if (!clinic) return NextResponse.json({ error: "Clinic not found." }, { status: 404 });
+
+  const patientId = await getPatientId(supabase, user.id);
+  if (!patientId) {
+    return NextResponse.json({ error: "Your patient profile could not be found." }, { status: 400 });
+  }
 
   const patientName = getUserName(user).trim();
   if (!patientName) {
@@ -64,6 +88,36 @@ export async function POST(request: Request) {
   if (typeof body.surgery !== "string" || !body.surgery.trim()) {
     return NextResponse.json({ error: "Surgery is required." }, { status: 400 });
   }
+
+  const startDate = typeof body.date === "string" && body.date ? body.date : null;
+  const endDate = typeof body.endDate === "string" && body.endDate ? body.endDate : startDate;
+  const requestId = typeof body.requestId === "string" ? body.requestId : "";
+  const requestQuery = requestId
+    ? supabase
+      .from("Patient_request")
+      .update({ start_date: startDate, end_date: endDate })
+      .eq("id", requestId)
+      .eq("id_patient", patientId)
+      .eq("id_clinic", clinicId)
+      .select("id")
+      .single()
+    : supabase
+      .from("Patient_request")
+      .insert({
+        id_patient: patientId,
+        id_clinic: clinicId,
+        start_date: startDate,
+        end_date: endDate,
+      });
+  const { data: savedRequest, error: requestError } = await requestQuery;
+  if (requestId && (requestError || !savedRequest)) {
+    return NextResponse.json({ error: "This patient request could not be found." }, { status: 404 });
+  }
+  if (requestError) {
+    console.error("Failed to save patient request:", requestError);
+    return NextResponse.json({ error: "We could not save your request. Please try again." }, { status: 500 });
+  }
+
   if (typeof clinic.email !== "string" || !clinic.email.trim()) {
     return NextResponse.json({ error: "This clinic does not have a registered email address." }, { status: 503 });
   }

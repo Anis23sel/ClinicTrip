@@ -1,8 +1,7 @@
 "use client";
 import { useState, type CSSProperties } from "react";
 import { Star, MapPin, Award } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import BookingInquiryModal from "../../components/booking/BookingInquiryModal";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
@@ -54,10 +53,15 @@ const mockClinicData = {
 export default function ClinicPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
-  const clinic = { ...mockClinicData, id };
+  const selectedProcedure = searchParams.get("procedure")?.trim();
+  const clinic = {
+    ...mockClinicData,
+    id,
+    procedureName: selectedProcedure || mockClinicData.procedureName,
+  };
   const [activeTab, setActiveTab] = useState<BookingTab>("clinic");
-  const [inquiryOpen, setInquiryOpen] = useState(false);
   const [booking, setBooking] = useState({
     doctorId: "",
     startDate: "",
@@ -83,9 +87,6 @@ export default function ClinicPage() {
     return total;
   };
 
-  const selectedDoctor = clinic.doctors.find((d) => d.id === booking.doctorId);
-  const surgeryLabel = selectedDoctor ? `${clinic.procedureName} with ${selectedDoctor.name}` : clinic.procedureName;
-
   const handleContactClinic = async () => {
     const { data: { user } } = await supabase.auth.getUser();
 
@@ -94,7 +95,21 @@ export default function ClinicPage() {
       return;
     }
 
-    setInquiryOpen(true);
+    const response = await fetch("/api/patient-requests", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clinicId: String(clinic.id),
+        startDate: booking.startDate,
+        endDate: booking.endDate,
+      }),
+    });
+
+    if (!response.ok) {
+      return;
+    }
+
+    router.push("/dashboard/patient");
   };
 
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
@@ -114,15 +129,6 @@ export default function ClinicPage() {
 
   return (
     <>
-      <BookingInquiryModal
-        isOpen={inquiryOpen}
-        onClose={() => setInquiryOpen(false)}
-        clinicName={clinic.name}
-        clinicId={String(clinic.id)}
-        surgeryName={surgeryLabel}
-        preferredDate={booking.startDate}
-      />
-
       <div className="min-h-screen bg-background">
         {/* Hero */}
         <div className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground py-12 px-4">
