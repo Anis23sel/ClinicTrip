@@ -11,6 +11,7 @@ type Booking = {
   clinicId: string;
   clinicName: string;
   procedure: string;
+  preferredDate: string;
   doctor: string;
   date: string;
   location: string;
