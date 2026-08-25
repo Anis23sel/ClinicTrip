@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
+import nodemailer from "nodemailer";
 import { createClient } from "@/app/utils/supabase/server";
+
 
 async function getAuthenticatedUser(supabase: ReturnType<typeof createClient>) {
   const { data: { user } } = await supabase.auth.getUser();
@@ -118,31 +120,50 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "We could not save your request. Please try again." }, { status: 500 });
   }
 
-  const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey) return NextResponse.json({ error: "Email delivery is not configured yet." }, { status: 503 });
+  const gmailUser = process.env.GMAIL_USER;
+const gmailAppPassword = process.env.GMAIL_APP_PASSWORD;
 
-  const message = [
-    `New inquiry from ${patientName}`,
-    `Patient email: ${user.email}`,
-    `Clinic: ${clinic.clinic_name}`,
-    `Clinic address: ${clinic.address || "Not specified"}`,
-    `Surgery: ${body.surgery.trim()}`,
-    `Preferred date: ${body.date || "Not specified"}`,
-    `Additional details: ${body.details || "None"}`,
-  ].join("\n");
+if (!gmailUser || !gmailAppPassword) {
+  return NextResponse.json(
+    { error: "Email delivery is not configured yet." },
+    { status: 503 }
+  );
+}
 
-  const emailResponse = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL || "ClinicTrip <onboarding@resend.dev>",
-      to: [process.env.RESEND_TO_EMAIL || "Anisselougha2311@gmail.com"],
-      reply_to: user.email,
-      subject: `New clinic inquiry from ${patientName}`,
-      text: message,
-    }),
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: gmailUser,
+    pass: gmailAppPassword,
+  },
+});
+
+const message = [
+  `New inquiry from ${patientName}`,
+  `Patient email: ${user.email}`,
+  `Clinic: ${clinic.clinic_name}`,
+  `Clinic address: ${clinic.address || "Not specified"}`,
+  `Surgery: ${body.surgery.trim()}`,
+  `Preferred date: ${body.date || "Not specified"}`,
+  `Additional details: ${body.details || "None"}`,
+].join("\n");
+
+try {
+  await transporter.sendMail({
+    from: `ClinicTrip <${gmailUser}>`,
+    to: clinic.email,
+    replyTo: user.email,
+    subject: `New clinic inquiry from ${patientName}`,
+    text: message,
   });
+} catch (error) {
+  console.error("Gmail delivery failed:", error);
 
-  if (!emailResponse.ok) return NextResponse.json({ error: "Email delivery failed. Please try again." }, { status: 502 });
-  return NextResponse.json({ success: true });
+  return NextResponse.json(
+    { error: "Email delivery failed. Please try again." },
+    { status: 502 }
+  );
+}
+
+return NextResponse.json({ success: true });
 }
