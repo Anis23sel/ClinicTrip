@@ -15,61 +15,25 @@ function useOutsideClick(ref: React.RefObject<HTMLElement | null>, onClose: () =
 }
 
 interface SearchLocationSelectorProps {
-  country: string;
   city: string;
-  countryCities: Record<string, string[]>;
-  onCountryChange: (country: string) => void;
+  cities: string[];
   onCityChange: (city: string) => void;
 }
 
-export default function SearchLocationSelector({ country, city, countryCities, onCountryChange, onCityChange }: SearchLocationSelectorProps) {
-  const [openCountry, setOpenCountry] = useState(false);
+export default function SearchLocationSelector({ city, cities, onCityChange }: SearchLocationSelectorProps) {
   const [openCity, setOpenCity] = useState(false);
-  const countryRef = useRef<HTMLDivElement>(null);
   const cityRef = useRef<HTMLDivElement>(null);
-  useOutsideClick(countryRef, useCallback(() => setOpenCountry(false), []));
   useOutsideClick(cityRef, useCallback(() => setOpenCity(false), []));
-  const cities = country ? countryCities[country] || [] : [];
 
   return (
-    <div className="flex gap-2">
-      <div className="relative" ref={countryRef}>
-        <button
-          type="button"
-          onClick={() => { setOpenCountry((current) => !current); setOpenCity(false); }}
-          className="h-full min-w-[140px] px-3 py-3 bg-input-background rounded-lg border border-border flex items-center gap-2 text-sm hover:border-primary transition-colors"
-        >
-          <MapPin size={15} className="text-muted-foreground shrink-0" />
-          <span className={country ? "" : "text-muted-foreground"}>{country || "Country"}</span>
-          <ChevronDown size={13} className="ml-auto text-muted-foreground" />
-        </button>
-
-        {openCountry && (
-          <div className="absolute z-30 top-full mt-1 left-0 w-52 bg-card border border-border rounded-xl shadow-xl overflow-hidden">
-            <button onClick={() => { onCountryChange(""); onCityChange(""); setOpenCountry(false); }} className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors text-muted-foreground">
-              All countries
-            </button>
-            {Object.keys(countryCities).map((countryOption) => (
-              <button
-                key={countryOption}
-                onClick={() => { onCountryChange(countryOption); onCityChange(""); setOpenCountry(false); setOpenCity(true); }}
-                className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${country === countryOption ? "bg-primary/10 text-primary font-medium" : ""}`}
-              >
-                {countryOption}
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {country && (
-        <div className="relative" ref={cityRef}>
+    <div className="relative" ref={cityRef}>
           <button
             type="button"
-            onClick={() => { setOpenCity((current) => !current); setOpenCountry(false); }}
+            onClick={() => setOpenCity((current) => !current)}
             className="h-full min-w-[130px] px-3 py-3 bg-input-background rounded-lg border border-border flex items-center gap-2 text-sm hover:border-primary transition-colors"
           >
-            <span className={city ? "" : "text-muted-foreground"}>{city || "All cities"}</span>
+            <MapPin size={15} className="text-muted-foreground shrink-0" />
+            <span className={city ? "" : "text-muted-foreground"}>{city || "City"}</span>
             <ChevronDown size={13} className="ml-auto text-muted-foreground" />
           </button>
 
@@ -90,7 +54,6 @@ export default function SearchLocationSelector({ country, city, countryCities, o
             </div>
           )}
         </div>
-      )}
-    </div>
+  
   );
 }

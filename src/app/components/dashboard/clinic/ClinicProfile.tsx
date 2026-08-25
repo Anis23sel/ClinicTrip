@@ -21,7 +21,7 @@ export default function ClinicProfile({ clinic, onSave }: { clinic: ClinicRecord
             <Field label="Email" type="email" value={draft.email || ''} onChange={(value) => update('email', value)} />
             <Field label="Phone" type="tel" value={draft.phone || ''} onChange={(value) => update('phone', value)} />
             <Field label="Country" value={draft.country || ''} onChange={(value) => update('country', value)} />
-            <Field label="State" value={draft.state || ''} onChange={(value) => update('state', value)} />
+            
           </div>
           <Field label="Address" value={draft.address || ''} onChange={(value) => update('address', value)} />
           <Field label="Website" value={draft.website || ''} onChange={(value) => update('website', value)} />

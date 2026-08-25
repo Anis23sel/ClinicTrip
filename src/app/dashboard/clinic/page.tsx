@@ -71,7 +71,7 @@ export default function ClinicDashboard() {
 
       const { data: clinicRow, error: clinicError } = await supabase
         .from('clinics')
-        .select('id, clinic_name, address, phone, state, website, country, city_id, email')
+        .select('id, clinic_name, address, phone, website, country, city_id, email')
         .eq('profile_id', profile.id)
         .maybeSingle();
       if (clinicError || !clinicRow) throw clinicError || new Error('No clinic is linked to your account.');

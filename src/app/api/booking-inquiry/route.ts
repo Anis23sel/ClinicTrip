@@ -118,10 +118,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "We could not save your request. Please try again." }, { status: 500 });
   }
 
-  if (typeof clinic.email !== "string" || !clinic.email.trim()) {
-    return NextResponse.json({ error: "This clinic does not have a registered email address." }, { status: 503 });
-  }
-
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "Email delivery is not configured yet." }, { status: 503 });
 
@@ -139,8 +135,9 @@ export async function POST(request: Request) {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env.RESEND_FROM_EMAIL || "Clinic Trip <no-reply@clinictrip.com>",
-      to: [clinic.email.trim()],
+      from: process.env.RESEND_FROM_EMAIL || "ClinicTrip <onboarding@resend.dev>",
+      to: [process.env.RESEND_TO_EMAIL || "Anisselougha2311@gmail.com"],
+      reply_to: user.email,
       subject: `New clinic inquiry from ${patientName}`,
       text: message,
     }),

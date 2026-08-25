@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Mail, Lock, User, Building } from "lucide-react";
+import { Mail, Lock, User, Building, Globe } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 
 const supabase = createClient();
@@ -21,7 +21,8 @@ export default function SignupForm() {
     password: "",
     confirmPassword: "",
     clinicName: "",
-    country: "",
+    website: "",
+    country: "turkey",
     address: "",
     phone: "",
     cityId: "",
@@ -117,6 +118,7 @@ const { data: profile, error: profileError } = await supabase
     first_name: firstName,
     last_name: lastName,
     gender: formData.gender,
+    phone: formData.phone,
   });
 
       if (patientError) {
@@ -135,6 +137,7 @@ const { data: profile, error: profileError } = await supabase
   .insert({
     profile_id: profileId,
     clinic_name: formData.clinicName,
+    website: formData.website || null,
     address: formData.address,
     phone: formData.phone,
     country: formData.country,
@@ -313,6 +316,33 @@ const { data: profile, error: profileError } = await supabase
                     
                     <option value="turkey">Turkey</option>
                   </select>
+                </div>
+
+                {/* Website */}
+                <div>
+                  <label className="mb-2 block font-medium">
+                    Website
+                  </label>
+
+                  <div className="relative">
+                    <Globe
+                      size={20}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+                    />
+
+                    <input
+                      type="url"
+                      placeholder="https://example.com"
+                      value={formData.website}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          website: e.target.value,
+                        })
+                      }
+                      className="w-full rounded-lg border border-border bg-input-background py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-ring"
+                    />
+                  </div>
                 </div>
               </>
             )}

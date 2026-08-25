@@ -16,7 +16,7 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Clinic inquiries require `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in `.env.local`. The sender must be a verified no-reply address in Resend.
+Clinic inquiries require `RESEND_API_KEY` and `RESEND_FROM_EMAIL` in `.env.local`. They are sent to `RESEND_TO_EMAIL`, which defaults to `Anisselougha2311@gmail.com`, and the sender can use Resend's test address: `ClinicTrip <onboarding@resend.dev>`.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

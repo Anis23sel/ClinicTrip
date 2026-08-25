@@ -17,13 +17,12 @@ function SearchContent() {
   const searchParams = useSearchParams();
   const [clinics, setClinics] = useState<ClinicResult[]>([]);
   const [surgeries, setSurgeries] = useState<Surgery[]>([]);
-  const [countryCities, setCountryCities] = useState<Record<string, string[]>>({});
+  const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
   const [showFilters, setShowFilters] = useState(true);
   const [selectedBodyPart, setSelectedBodyPart] = useState<string | null>(null);
   const [keyword, setKeyword] = useState("");
-  const [country, setCountry] = useState("");
   const [city, setCity] = useState("");
   const [dateRange, setDateRange] = useState<DateRange>({ from: "", to: "" });
   const [filters, setFilters] = useState({
@@ -164,15 +163,9 @@ function SearchContent() {
           };
         });
 
-      const citiesByCountry: Record<string, string[]> = {};
-      for (const clinic of clinicResultsData) {
-        if (!clinic.country || !clinic.city) continue;
-        citiesByCountry[clinic.country] = [...new Set([...(citiesByCountry[clinic.country] || []), clinic.city])];
-      }
-
       setClinics(clinicResultsData);
       setSurgeries(surgeryData);
-      setCountryCities(citiesByCountry);
+      setAvailableCities([...new Set(cityRows.map((row) => row.city))]);
       setLoading(false);
     };
 
@@ -201,10 +194,6 @@ function SearchContent() {
         const haystack = [clinic.name, ...clinic.procedures].join(" ").toLowerCase();
         return haystack.includes(keywordText);
       });
-    }
-
-    if (country) {
-      filtered = filtered.filter((clinic) => clinic.country === country);
     }
 
     if (city) {
@@ -263,7 +252,7 @@ function SearchContent() {
     }
 
     return sortedClinics;
-  }, [activeBodyPartProcedures, city, clinics, country, filters.category, filters.priceRange, filters.rating, filters.sortBy, filters.surgeryTypes, keyword]);
+  }, [activeBodyPartProcedures, city, clinics, filters.category, filters.priceRange, filters.rating, filters.sortBy, filters.surgeryTypes, keyword]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -272,7 +261,7 @@ function SearchContent() {
         <div className="max-w-7xl mx-auto">
           <h1 className="text-2xl font-semibold mb-4">Find Your Perfect Clinic</h1>
           <div className="flex gap-3 flex-wrap lg:flex-nowrap items-stretch">
-            <SearchLocationSelector country={country} city={city} onCountryChange={setCountry} onCityChange={setCity} countryCities={countryCities} />
+            <SearchLocationSelector city={city} cities={availableCities} onCityChange={setCity} />
             <div className="hidden lg:block w-px bg-border self-stretch" />
             <SearchDateRangePicker value={dateRange} onChange={setDateRange} />
             <div className="hidden lg:block w-px bg-border self-stretch" />
@@ -295,12 +284,12 @@ function SearchContent() {
             </button>
           </div>
 
-          {(country || dateRange.from) && (
+          {(city || dateRange.from) && (
             <div className="flex flex-wrap gap-2 mt-3">
-              {country && (
+              {city && (
                 <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full flex items-center gap-1">
-                  {city ? `${city}, ${country}` : country}
-                  <button onClick={() => { setCountry(""); setCity(""); }} className="hover:text-destructive"><X size={10} /></button>
+                  {city}
+                  <button onClick={() => setCity("")} className="hover:text-destructive"><X size={10} /></button>
                 </span>
               )}
               {dateRange.from && (
