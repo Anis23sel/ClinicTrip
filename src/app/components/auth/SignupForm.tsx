@@ -41,7 +41,7 @@ export default function SignupForm() {
         .order("city");
 
       if (error) {
-        console.error("Error fetching cities:", error);
+        console.error("Error fetching Cities:", error);
         return;
       }
 
