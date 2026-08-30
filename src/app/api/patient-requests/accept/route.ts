@@ -39,7 +39,7 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "You must be signed in to start a request." },
+        { error: "You must be signed in." },
         { status: 401 }
       );
     }
@@ -50,65 +50,20 @@ export async function POST(request: Request) {
 
     const body = await request.json();
 
-    const clinicId =
-      typeof body.clinicId === "string"
-        ? body.clinicId.trim()
+    const requestId =
+      typeof body.requestId === "string"
+        ? body.requestId.trim()
         : "";
 
-    const procedure =
-      typeof body.procedure === "string"
-        ? body.procedure.trim()
-        : "";
-
-    const startDate =
-      typeof body.startDate === "string" && body.startDate.trim()
-        ? body.startDate.trim()
-        : null;
-
-    const endDate =
-      typeof body.endDate === "string" && body.endDate.trim()
-        ? body.endDate.trim()
-        : startDate;
-      console.log("PATIENT REQUEST DATES:");
-      console.log("startDate:", startDate);
-      console.log("endDate:", endDate);
-    // --------------------------------------------------
-    // 3. Validate required fields
-    // --------------------------------------------------
-
-    if (!clinicId) {
+    if (!requestId) {
       return NextResponse.json(
-        { error: "Clinic is required." },
-        { status: 400 }
-      );
-    }
-
-    if (!procedure) {
-      return NextResponse.json(
-        { error: "Procedure is required." },
+        { error: "Request ID is required." },
         { status: 400 }
       );
     }
 
     // --------------------------------------------------
-    // 4. Check clinic exists
-    // --------------------------------------------------
-
-    const { data: clinic, error: clinicError } = await supabase
-      .from("clinics")
-      .select("id")
-      .eq("id", clinicId)
-      .single();
-
-    if (clinicError || !clinic) {
-      return NextResponse.json(
-        { error: "Clinic not found." },
-        { status: 404 }
-      );
-    }
-
-    // --------------------------------------------------
-    // 5. Get patient ID
+    // 3. Get patient ID
     // --------------------------------------------------
 
     const patientId = await getPatientId(
@@ -118,66 +73,126 @@ export async function POST(request: Request) {
 
     if (!patientId) {
       return NextResponse.json(
+        { error: "Your patient profile could not be found." },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 4. Get the patient request
+    // --------------------------------------------------
+
+    const { data: patientRequest, error: requestError } =
+      await supabase
+        .from("Patient_request")
+        .select(
+          "id, id_patient, clinic_decision, patient_decision"
+        )
+        .eq("id", requestId)
+        .single();
+
+    if (requestError || !patientRequest) {
+      return NextResponse.json(
+        { error: "Patient request not found." },
+        { status: 404 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 5. Make sure this request belongs to this patient
+    // --------------------------------------------------
+
+    if (
+      String(patientRequest.id_patient) !==
+      String(patientId)
+    ) {
+      return NextResponse.json(
         {
           error:
-            "Your patient profile could not be found.",
+            "You are not authorized to accept this request.",
+        },
+        { status: 403 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 6. Clinic must accept first
+    // --------------------------------------------------
+
+    if (!patientRequest.clinic_decision) {
+      return NextResponse.json(
+        {
+          error:
+            "The clinic must accept the request first.",
         },
         { status: 400 }
       );
     }
 
     // --------------------------------------------------
-    // 6. Create Patient_request
+    // 7. Prevent accepting twice
     // --------------------------------------------------
 
-    const { data: newRequest, error: requestError } =
+    if (patientRequest.patient_decision) {
+      return NextResponse.json(
+        {
+          error:
+            "You have already accepted this request.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 8. Accept the request
+    // --------------------------------------------------
+
+    const { data: updatedRequest, error: updateError } =
       await supabase
         .from("Patient_request")
-        .insert({
-          id_patient: patientId,
-          id_clinic: clinicId,
-          procedure: procedure,
-
-          start_date: startDate,
-          end_date: endDate,
-
+        .update({
+          patient_decision: true,
         })
-        .select("id")
+        .eq("id", requestId)
+        .eq("id_patient", patientId)
+        .select(
+          "id, clinic_decision, patient_decision, inquiry_completed"
+        )
         .single();
 
-    if (requestError || !newRequest) {
+    if (updateError || !updatedRequest) {
       console.error(
-        "Failed to create patient request:",
-        requestError
+        "Failed to accept patient request:",
+        updateError
       );
 
       return NextResponse.json(
         {
           error:
-            "We could not create your request. Please try again.",
+            "We could not accept this request. Please try again.",
         },
         { status: 500 }
       );
     }
 
     // --------------------------------------------------
-    // 7. Return created request
+    // 9. Return updated request
     // --------------------------------------------------
 
     return NextResponse.json({
       success: true,
-      id: newRequest.id,
+      request: updatedRequest,
     });
   } catch (error) {
     console.error(
-      "Patient request API error:",
+      "Patient accept request API error:",
       error
     );
 
     return NextResponse.json(
       {
         error:
-          "Something went wrong while creating your request.",
+          "Something went wrong while accepting the request.",
       },
       { status: 500 }
     );

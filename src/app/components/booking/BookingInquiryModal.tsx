@@ -10,21 +10,25 @@ const supabase = createClient();
 interface BookingInquiryModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onInquiryCompleted: () => void;
   clinicName: string;
   clinicId: string;
   requestId?: string;
   surgeryName: string;
-  preferredDate?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export default function BookingInquiryModal({
   isOpen,
   onClose,
+  onInquiryCompleted,
   clinicName,
   clinicId,
   requestId,
   surgeryName,
-  preferredDate,
+  startDate,
+  endDate,
 }: BookingInquiryModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
@@ -32,8 +36,9 @@ export default function BookingInquiryModal({
   const [form, setForm] = useState({
     name: "",
     email: "",
-    surgery: surgeryName,
-    date: preferredDate || "",
+    procedure: surgeryName,
+    startDate: startDate || "",
+    endDate: endDate || "",
     details: "",
   });
 
@@ -42,8 +47,9 @@ export default function BookingInquiryModal({
   useEffect(() => {
     setForm((prev) => ({
       ...prev,
-      surgery: surgeryName,
-      date: preferredDate || "",
+      procedure: surgeryName,
+      startDate: startDate || "",
+      endDate: endDate || "",
     }));
 
     setSubmitted(false);
@@ -65,7 +71,7 @@ export default function BookingInquiryModal({
     };
 
     loadSignedInUser();
-  }, [surgeryName, preferredDate, isOpen, supabase]);
+  }, [surgeryName, startDate, endDate, isOpen, supabase]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -112,6 +118,7 @@ export default function BookingInquiryModal({
     }
 
     setSubmitted(true);
+    onInquiryCompleted();
   };
 
   return (
@@ -124,7 +131,7 @@ export default function BookingInquiryModal({
         <div className="flex items-center justify-between border-b border-border p-6">
           <div>
             <h2 className="text-xl font-semibold">
-              Request a Booking
+              Request a Consultation
             </h2>
 
             <p className="mt-0.5 text-sm text-muted-foreground">
@@ -191,42 +198,56 @@ export default function BookingInquiryModal({
             </div>
 
             <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Surgery of Interest *
-              </label>
+  <label className="mb-1.5 block text-sm font-medium">
+    Surgery of Interest
+  </label>
 
-              <input
-                type="text"
-                required
-                value={form.surgery}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    surgery: e.target.value,
-                  })
-                }
-                className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+  <div className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm">
+    {form.procedure}
+  </div>
+</div>
 
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Preferred Date
-              </label>
+            <div className="grid grid-cols-2 gap-4">
+  <div>
+    <label className="mb-1.5 block text-sm font-medium">
+      Start Date *
+    </label>
 
-              <input
-                type="date"
-                value={form.date}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    date: e.target.value,
-                  })
-                }
-                min={new Date().toISOString().split("T")[0]}
-                className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
+    <input
+      type="date"
+      required
+      value={form.startDate}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          startDate: e.target.value,
+        })
+      }
+      min={new Date().toISOString().split("T")[0]}
+      className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+    />
+  </div>
+
+  <div>
+    <label className="mb-1.5 block text-sm font-medium">
+      End Date *
+    </label>
+
+    <input
+      type="date"
+      required
+      value={form.endDate}
+      onChange={(e) =>
+        setForm({
+          ...form,
+          endDate: e.target.value,
+        })
+      }
+      min={form.startDate || new Date().toISOString().split("T")[0]}
+      className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+    />
+  </div>
+</div>
 
             <div>
               <label className="mb-1.5 block text-sm font-medium">

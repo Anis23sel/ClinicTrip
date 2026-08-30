@@ -49,7 +49,7 @@ const tabs = [
   { id: 'doctors' as const, label: 'Doctors', icon: Users },
   { id: 'procedures' as const, label: 'Procedures', icon: Stethoscope },
   { id: 'accommodations' as const, label: 'Accommodations', icon: Home },
-  { id: 'bookings' as const, label: 'Bookings', icon: Calendar },
+  { id: 'bookings' as const, label: 'Consultations', icon: Calendar },
 ];
 
 export default function ClinicDashboard() {
@@ -83,7 +83,7 @@ export default function ClinicDashboard() {
         supabase.from('medical_procedure').select('id, name').order('name'),
       ]);
       if (procedureError) console.error('Failed to load clinic procedures:', procedureError);
-      if (requestError) console.error('Failed to load clinic bookings:', requestError);
+      if (requestError) console.error('Failed to load clinic consultations:', requestError);
       if (procedureCatalogError) console.error('Failed to load procedure options:', procedureCatalogError);
       setMedicalProcedures((medicalProcedureRows || []).map((procedure) => ({ id: String(procedure.id), name: procedure.name })));
 

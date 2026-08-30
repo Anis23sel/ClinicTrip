@@ -10,6 +10,9 @@ type Booking = {
   patientEmail: string;
   startDate: string | null;
   endDate: string | null;
+  inquiryCompleted: boolean;
+  clinicDecision: boolean;
+  patientDecision: boolean;
 };
 
 const supabase = createClient();
@@ -27,12 +30,13 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
   const [sendSuccess, setSendSuccess] = useState("");
+  const [accepting, setAccepting] = useState<string | null>(null);
 
   useEffect(() => {
     const loadBookings = async () => {
       const { data: rows, error: requestError } = await supabase
         .from("Patient_request")
-        .select("id, id_patient, id_clinic, start_date, end_date")
+        .select("id, id_patient, id_clinic, start_date, end_date, inquiry_completed, clinic_decision, patient_decision")
         .eq("id_clinic", clinicId)
         .order("created_at", { ascending: false });
 
@@ -73,6 +77,9 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
             patientEmail: patient?.email || "",
             startDate: row.start_date,
             endDate: row.end_date,
+            inquiryCompleted: row.inquiry_completed,
+            clinicDecision: row.clinic_decision,
+            patientDecision: row.patient_decision,
           };
         })
       );
@@ -117,10 +124,7 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
       return;
     }
 
-    if (!booking.patientEmail) {
-      setSendError("This patient does not have an email address.");
-      return;
-    }
+    
 
     setSending(true);
     setSendError("");
@@ -133,7 +137,7 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          patientEmail: booking.patientEmail,
+          requestId: booking.id,
           subject: subject.trim(),
           message: message.trim(),
         }),
@@ -159,6 +163,51 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
       );
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleAcceptRequest = async (booking: Booking) => {
+    setAccepting(booking.id);
+  
+    try {
+      const response = await fetch("/api/clinic/accept-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId: booking.id,
+        }),
+      });
+  
+      const result = await response.json();
+  
+      if (!response.ok) {
+        throw new Error(
+          result.error || "Failed to accept request."
+        );
+      }
+  
+      setBookings((currentBookings) =>
+        currentBookings.map((currentBooking) =>
+          currentBooking.id === booking.id
+            ? {
+                ...currentBooking,
+                clinicDecision: true,
+              }
+            : currentBooking
+        )
+      );
+    } catch (error) {
+      console.error("Failed to accept request:", error);
+  
+      alert(
+        error instanceof Error
+          ? error.message
+          : "Failed to accept request."
+      );
+    } finally {
+      setAccepting(null);
     }
   };
 
@@ -199,7 +248,7 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
                   <p className="text-muted-foreground">Patient request</p>
                 </div>
 
-                <Status />
+                <Status clinicDecision={booking.clinicDecision} />
               </div>
 
               <div className="mb-4 grid gap-4 md:grid-cols-3">
@@ -213,16 +262,28 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
                   value={booking.endDate || "Not specified"}
                 />
 
-                <Metric label="Request ID" value={booking.id} />
+                <Metric label="Assigned Doctor" value={"TBD"} />
               </div>
 
-              <button
-                type="button"
-                onClick={() => openContactForm(booking)}
-                className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
-              >
-                Contact Patient
-              </button>
+              <div className="flex gap-3">
+  <button
+    type="button"
+    onClick={() => openContactForm(booking)}
+    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+  >
+    Contact Patient
+  </button>
+
+  {booking.inquiryCompleted && !booking.clinicDecision && (
+    <button
+      type="button"
+      onClick={() => handleAcceptRequest(booking)}
+      className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90"
+    >
+      Accept Request
+    </button>
+  )}
+</div>
 
               {contactingBooking === booking.id && (
                 <div className="mt-5 rounded-lg border border-border bg-background p-5">
@@ -230,9 +291,7 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
                     Contact {booking.patientName}
                   </h4>
 
-                  <p className="mb-4 text-sm text-muted-foreground">
-                    Sending to: {booking.patientEmail || "No email available"}
-                  </p>
+                  
 
                   <div className="space-y-4">
                     <div>
@@ -306,7 +365,16 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
   );
 }
 
-function Status() {
+function Status({ clinicDecision }: { clinicDecision: boolean }) {
+  if (clinicDecision) {
+    return (
+      <div className="flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm text-green-800">
+        <CheckCircle size={16} />
+        <span>Validated</span>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-2 rounded-full bg-yellow-100 px-3 py-1 text-sm text-yellow-800">
       <Clock size={16} />

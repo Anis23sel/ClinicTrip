@@ -88,36 +88,45 @@ export default function ClinicPage() {
   };
 
   const handleContactClinic = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+  
     if (!user) {
       router.push("/login");
       return;
     }
 
+    
+  
     const response = await fetch("/api/patient-requests", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         clinicId: String(clinic.id),
+        procedure: clinic.procedureName,
         startDate: booking.startDate,
         endDate: booking.endDate,
       }),
     });
-
+  
     if (!response.ok) {
+      const result = await response.json().catch(() => null);
+      console.error("Failed to create patient request:", result);
       return;
     }
-
+  
     router.push("/dashboard/patient");
   };
-
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: booking.startDate ? new Date(booking.startDate) : undefined,
     to: booking.endDate ? new Date(booking.endDate) : undefined,
   });
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
+    
     setDateRange(range);
 
     setBooking((prev) => ({

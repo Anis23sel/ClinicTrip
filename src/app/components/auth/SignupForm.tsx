@@ -119,6 +119,7 @@ const { data: profile, error: profileError } = await supabase
     last_name: lastName,
     gender: formData.gender,
     phone: formData.phone,
+    email: formData.email,
   });
 
       if (patientError) {
@@ -155,7 +156,7 @@ const { data: profile, error: profileError } = await supabase
 
   } catch (error) {
     console.error("Signup failed:", error);
-    alert("Something went wrong. Please try again.");
+    alert("Something went wrong, Please try again.");
   } finally {
     setLoading(false);
   }
