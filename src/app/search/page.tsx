@@ -435,10 +435,15 @@ function SearchContent() {
 
                   return (
                     <ClinicResultCard
-                      key={clinic.id}
-                      clinic={clinic}
-                      selectedProcedure={selectedProcedure}
-                    />
+  key={clinic.id}
+  clinic={clinic}
+  selectedProcedures={filters.surgeryTypes.filter((selectedSurgery) =>
+    clinic.procedures.some((procedure) =>
+      normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
+      normalizeText(selectedSurgery).includes(normalizeText(procedure))
+    )
+  )}
+/>
                   );
                 }))}
             </div>

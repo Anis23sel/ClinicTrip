@@ -12,7 +12,9 @@ async function getPatientId(
     .eq("user_id", userId)
     .single();
 
-  if (profileError || !profile) return null;
+  if (profileError || !profile) {
+    return null;
+  }
 
   const { data: patient, error: patientError } = await supabase
     .from("patients")
@@ -20,7 +22,9 @@ async function getPatientId(
     .eq("profile_id", profile.id)
     .maybeSingle();
 
-  if (patientError || !patient) return null;
+  if (patientError || !patient) {
+    return null;
+  }
 
   return patient.id;
 }
@@ -39,7 +43,9 @@ export async function POST(request: Request) {
 
     if (!user) {
       return NextResponse.json(
-        { error: "You must be signed in to start a request." },
+        {
+          error: "You must be signed in to start a request.",
+        },
         { status: 401 }
       );
     }
@@ -55,37 +61,80 @@ export async function POST(request: Request) {
         ? body.clinicId.trim()
         : "";
 
-    const procedure =
-      typeof body.procedure === "string"
-        ? body.procedure.trim()
-        : "";
+    /*
+     * The ClinicPage now sends:
+     *
+     * procedures: ["Rhinoplasty", "Liposuction"]
+     *
+     * We support both the new array format and the old
+     * single-string format for compatibility.
+     */
+    let procedures: string[] = [];
 
+    if (Array.isArray(body.procedures)) {
+      procedures = body.procedures
+        .filter(
+          (procedure: unknown): procedure is string =>
+            typeof procedure === "string"
+        )
+        .map((procedure: string) => procedure.trim())
+        .filter(Boolean);
+    } else if (typeof body.procedure === "string") {
+      const procedure = body.procedure.trim();
+
+      if (procedure) {
+        procedures = [procedure];
+      }
+    }
+
+    /*
+     * Doctor is optional.
+     */
+    const doctorId =
+      typeof body.doctorId === "string" && body.doctorId.trim()
+        ? body.doctorId.trim()
+        : null;
+
+    /*
+     * Dates are optional.
+     */
     const startDate =
-      typeof body.startDate === "string" && body.startDate.trim()
+      typeof body.startDate === "string" &&
+      body.startDate.trim()
         ? body.startDate.trim()
         : null;
 
     const endDate =
-      typeof body.endDate === "string" && body.endDate.trim()
+      typeof body.endDate === "string" &&
+      body.endDate.trim()
         ? body.endDate.trim()
         : startDate;
-      console.log("PATIENT REQUEST DATES:");
-      console.log("startDate:", startDate);
-      console.log("endDate:", endDate);
+
+    console.log("PATIENT REQUEST:");
+    console.log("clinicId:", clinicId);
+    console.log("procedures:", procedures);
+    console.log("doctorId:", doctorId);
+    console.log("startDate:", startDate);
+    console.log("endDate:", endDate);
+
     // --------------------------------------------------
     // 3. Validate required fields
     // --------------------------------------------------
 
     if (!clinicId) {
       return NextResponse.json(
-        { error: "Clinic is required." },
+        {
+          error: "Clinic is required.",
+        },
         { status: 400 }
       );
     }
 
-    if (!procedure) {
+    if (procedures.length === 0) {
       return NextResponse.json(
-        { error: "Procedure is required." },
+        {
+          error: "Please select at least one procedure.",
+        },
         { status: 400 }
       );
     }
@@ -102,7 +151,9 @@ export async function POST(request: Request) {
 
     if (clinicError || !clinic) {
       return NextResponse.json(
-        { error: "Clinic not found." },
+        {
+          error: "Clinic not found.",
+        },
         { status: 404 }
       );
     }
@@ -130,18 +181,49 @@ export async function POST(request: Request) {
     // 6. Create Patient_request
     // --------------------------------------------------
 
+    /*
+     * Your current database has ONE "procedure" column.
+     *
+     * Therefore, multiple selected procedures are stored
+     * as a comma-separated string:
+     *
+     * "Rhinoplasty, Liposuction"
+     *
+     * If you later create a separate patient_request_procedures
+     * table, we can normalize this properly.
+     */
+    const procedureValue = procedures.join(", ");
+
+    const insertData: {
+      id_patient: string;
+      id_clinic: string;
+      procedure: string;
+      start_date: string | null;
+      end_date: string | null;
+      doctor_id?: string | null;
+    } = {
+      id_patient: patientId,
+      id_clinic: clinicId,
+      procedure: procedureValue,
+      start_date: startDate,
+      end_date: endDate,
+    };
+
+    /*
+     * Only include doctor_id if your Patient_request table
+     * actually has this column.
+     *
+     * If your table does NOT have doctor_id, remove the
+     * following two lines.
+     */
+    if (doctorId) {
+      insertData.doctor_id = doctorId;
+    }
+
     const { data: newRequest, error: requestError } =
       await supabase
         .from("Patient_request")
-        .insert({
-          id_patient: patientId,
-          id_clinic: clinicId,
-          procedure: procedure,
-
-          start_date: startDate,
-          end_date: endDate,
-
-        })
+        .insert(insertData)
         .select("id")
         .single();
 
@@ -154,6 +236,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
+            requestError?.message ||
             "We could not create your request. Please try again.",
         },
         { status: 500 }
