@@ -10,6 +10,8 @@ type Booking = {
   patientEmail: string;
   startDate: string | null;
   endDate: string | null;
+  finalStartDate: string | null;
+  finalEndDate: string | null;
   inquiryCompleted: boolean;
   clinicDecision: boolean;
   patientDecision: boolean;
@@ -49,6 +51,18 @@ export default function ClinicBookings({
   const [priceSuccess, setPriceSuccess] = useState<string | null>(null);
 
   // ============================================================
+  // FINAL DATE STATE
+  // ============================================================
+
+  const [dateInputs, setDateInputs] = useState<
+    Record<string, { startDate: string; endDate: string }>
+  >({});
+
+  const [savingDates, setSavingDates] = useState<string | null>(null);
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [dateSuccess, setDateSuccess] = useState<string | null>(null);
+
+  // ============================================================
   // LOAD BOOKINGS
   // ============================================================
 
@@ -64,6 +78,8 @@ export default function ClinicBookings({
               id_clinic,
               start_date,
               end_date,
+              final_start_date,
+              final_end_date,
               inquiry_completed,
               clinic_decision,
               patient_decision,
@@ -80,24 +96,19 @@ export default function ClinicBookings({
         // ============================================================
 
         const patientIds = [
-          ...new Set(
-            (rows || []).map((row) => row.id_patient)
-          ),
+          ...new Set((rows || []).map((row) => row.id_patient)),
         ];
 
         // ============================================================
         // GET PATIENTS
         // ============================================================
 
-        const { data: patients, error: patientError } =
-          patientIds.length
-            ? await supabase
-                .from("patients")
-                .select(
-                  "id, first_name, last_name, email"
-                )
-                .in("id", patientIds)
-            : { data: [], error: null };
+        const { data: patients, error: patientError } = patientIds.length
+          ? await supabase
+              .from("patients")
+              .select("id, first_name, last_name, email")
+              .in("id", patientIds)
+          : { data: [], error: null };
 
         if (patientError) throw patientError;
 
@@ -109,10 +120,7 @@ export default function ClinicBookings({
           (patients || []).map((patient) => [
             String(patient.id),
             {
-              name: [
-                patient.first_name,
-                patient.last_name,
-              ]
+              name: [patient.first_name, patient.last_name]
                 .filter(Boolean)
                 .join(" "),
 
@@ -127,46 +135,39 @@ export default function ClinicBookings({
 
         setBookings(
           (rows || []).map((row) => {
-            const patient = patientMap.get(
-              String(row.id_patient)
-            );
+            const patient = patientMap.get(String(row.id_patient));
 
             return {
               id: String(row.id),
 
-              patientName:
-                patient?.name || "Patient",
+              patientName: patient?.name || "Patient",
 
-              patientEmail:
-                patient?.email || "",
+              patientEmail: patient?.email || "",
 
               startDate: row.start_date,
 
               endDate: row.end_date,
 
-              inquiryCompleted:
-                row.inquiry_completed ?? false,
+              finalStartDate: row.final_start_date,
 
-              clinicDecision:
-                row.clinic_decision ?? false,
+              finalEndDate: row.final_end_date,
 
-              patientDecision:
-                row.patient_decision ?? false,
+              inquiryCompleted: row.inquiry_completed ?? false,
+
+              clinicDecision: row.clinic_decision ?? false,
+
+              patientDecision: row.patient_decision ?? false,
 
               // Price from Patient_request
               price:
-                row.price !== null &&
-                row.price !== undefined
+                row.price !== null && row.price !== undefined
                   ? Number(row.price)
                   : null,
             };
           })
         );
       } catch (loadError) {
-        console.error(
-          "Failed to load clinic bookings:",
-          loadError
-        );
+        console.error("Failed to load clinic bookings:", loadError);
 
         setError(
           loadError instanceof Error
@@ -185,10 +186,7 @@ export default function ClinicBookings({
   // PRICE HANDLERS
   // ============================================================
 
-  const handlePriceChange = (
-    bookingId: string,
-    value: string
-  ) => {
+  const handlePriceChange = (bookingId: string, value: string) => {
     // Only allow numbers and decimal point
     if (!/^\d*\.?\d*$/.test(value)) {
       return;
@@ -204,13 +202,10 @@ export default function ClinicBookings({
   };
 
   const handleSavePrice = async (booking: Booking) => {
-    const inputValue =
-      priceInputs[booking.id] ?? "";
+    const inputValue = priceInputs[booking.id] ?? "";
 
     if (!inputValue.trim()) {
-      setPriceError(
-        "Please enter a price before saving."
-      );
+      setPriceError("Please enter a price before saving.");
       setPriceSuccess(null);
       return;
     }
@@ -218,17 +213,13 @@ export default function ClinicBookings({
     const price = Number(inputValue);
 
     if (!Number.isFinite(price)) {
-      setPriceError(
-        "Please enter a valid price."
-      );
+      setPriceError("Please enter a valid price.");
       setPriceSuccess(null);
       return;
     }
 
     if (price < 0) {
-      setPriceError(
-        "Price cannot be negative."
-      );
+      setPriceError("Price cannot be negative.");
       setPriceSuccess(null);
       return;
     }
@@ -271,10 +262,7 @@ export default function ClinicBookings({
         `Price saved successfully: $${price.toLocaleString()}`
       );
     } catch (error) {
-      console.error(
-        "Failed to update price:",
-        error
-      );
+      console.error("Failed to update price:", error);
 
       setPriceError(
         error instanceof Error
@@ -287,14 +275,105 @@ export default function ClinicBookings({
   };
 
   // ============================================================
+  // FINAL DATE HANDLERS
+  // ============================================================
+
+  const handleDateChange = (
+    bookingId: string,
+    field: "startDate" | "endDate",
+    value: string
+  ) => {
+    setDateInputs((current) => ({
+      ...current,
+      [bookingId]: {
+        startDate: current[bookingId]?.startDate ?? "",
+        endDate: current[bookingId]?.endDate ?? "",
+        [field]: value,
+      },
+    }));
+
+    setDateError(null);
+    setDateSuccess(null);
+  };
+
+  const handleSaveDates = async (booking: Booking) => {
+    const input = dateInputs[booking.id];
+
+    const startDate = input?.startDate ?? "";
+    const endDate = input?.endDate ?? "";
+
+    if (!startDate || !endDate) {
+      setDateError("Please select both a start date and an end date.");
+      setDateSuccess(null);
+      return;
+    }
+
+    if (endDate < startDate) {
+      setDateError("End date cannot be before the start date.");
+      setDateSuccess(null);
+      return;
+    }
+
+    setSavingDates(booking.id);
+    setDateError(null);
+    setDateSuccess(null);
+
+    try {
+      const { error: updateError } = await supabase
+        .from("Patient_request")
+        .update({
+          final_start_date: startDate,
+          final_end_date: endDate,
+        })
+        .eq("id", booking.id)
+        .eq("id_clinic", clinicId);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      // Update local booking immediately
+      setBookings((currentBookings) =>
+        currentBookings.map((currentBooking) =>
+          currentBooking.id === booking.id
+            ? {
+                ...currentBooking,
+                finalStartDate: startDate,
+                finalEndDate: endDate,
+              }
+            : currentBooking
+        )
+      );
+
+      setDateInputs((current) => ({
+        ...current,
+        [booking.id]: {
+          startDate: "",
+          endDate: "",
+        },
+      }));
+
+      setDateSuccess("Final procedure dates saved successfully.");
+    } catch (error) {
+      console.error("Failed to update final dates:", error);
+
+      setDateError(
+        error instanceof Error
+          ? error.message
+          : "We could not update the final dates."
+      );
+    } finally {
+      setSavingDates(null);
+    }
+  };
+
+  // ============================================================
   // CONTACT PATIENT
   // ============================================================
 
   const openContactForm = (booking: Booking) => {
     setContactingBooking(booking.id);
-    setSubject(
-      `Regarding your ClinicTrip request`
-    );
+    setSubject(`Regarding your ClinicTrip request`);
     setMessage("");
     setSendError("");
     setSendSuccess("");
@@ -308,9 +387,7 @@ export default function ClinicBookings({
     setSendSuccess("");
   };
 
-  const handleSendEmail = async (
-    booking: Booking
-  ) => {
+  const handleSendEmail = async (booking: Booking) => {
     if (!subject.trim()) {
       setSendError("Subject is required.");
       return;
@@ -326,42 +403,31 @@ export default function ClinicBookings({
     setSendSuccess("");
 
     try {
-      const response = await fetch(
-        "/api/clinic/contact-patient",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            requestId: booking.id,
-            subject: subject.trim(),
-            message: message.trim(),
-          }),
-        }
-      );
+      const response = await fetch("/api/clinic/contact-patient", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId: booking.id,
+          subject: subject.trim(),
+          message: message.trim(),
+        }),
+      });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          result.error ||
-            "Email delivery failed."
-        );
+        throw new Error(result.error || "Email delivery failed.");
       }
 
-      setSendSuccess(
-        "Email sent successfully."
-      );
+      setSendSuccess("Email sent successfully.");
 
       setTimeout(() => {
         closeContactForm();
       }, 1500);
     } catch (error) {
-      console.error(
-        "Failed to send email:",
-        error
-      );
+      console.error("Failed to send email:", error);
 
       setSendError(
         error instanceof Error
@@ -377,50 +443,38 @@ export default function ClinicBookings({
   // ACCEPT REQUEST
   // ============================================================
 
-  const handleAcceptRequest = async (
-    booking: Booking
-  ) => {
+  const handleAcceptRequest = async (booking: Booking) => {
     setAccepting(booking.id);
 
     try {
-      const response = await fetch(
-        "/api/clinic/accept-request",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            requestId: booking.id,
-          }),
-        }
-      );
+      const response = await fetch("/api/clinic/accept-request", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          requestId: booking.id,
+        }),
+      });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(
-          result.error ||
-            "Failed to accept request."
-        );
+        throw new Error(result.error || "Failed to accept request.");
       }
 
       setBookings((currentBookings) =>
-        currentBookings.map(
-          (currentBooking) =>
-            currentBooking.id === booking.id
-              ? {
-                  ...currentBooking,
-                  clinicDecision: true,
-                }
-              : currentBooking
+        currentBookings.map((currentBooking) =>
+          currentBooking.id === booking.id
+            ? {
+                ...currentBooking,
+                clinicDecision: true,
+              }
+            : currentBooking
         )
       );
     } catch (error) {
-      console.error(
-        "Failed to accept request:",
-        error
-      );
+      console.error("Failed to accept request:", error);
 
       alert(
         error instanceof Error
@@ -438,33 +492,23 @@ export default function ClinicBookings({
 
   return (
     <section>
-      <h2 className="mb-6 text-2xl font-bold">
-        Booking Management
-      </h2>
+      <h2 className="mb-6 text-2xl font-bold">Booking Management</h2>
 
       {loading && (
-        <p className="text-muted-foreground">
-          Loading bookings...
-        </p>
+        <p className="text-muted-foreground">Loading bookings...</p>
       )}
 
       {!loading && error && (
-        <p
-          role="alert"
-          className="text-destructive"
-        >
+        <p role="alert" className="text-destructive">
           {error}
         </p>
       )}
 
-      {!loading &&
-        !error &&
-        bookings.length === 0 && (
-          <p className="text-muted-foreground">
-            No patient requests found for this
-            clinic.
-          </p>
-        )}
+      {!loading && !error && bookings.length === 0 && (
+        <p className="text-muted-foreground">
+          No patient requests found for this clinic.
+        </p>
+      )}
 
       <div className="space-y-4">
         {!loading &&
@@ -489,11 +533,7 @@ export default function ClinicBookings({
                   </p>
                 </div>
 
-                <Status
-                  clinicDecision={
-                    booking.clinicDecision
-                  }
-                />
+                <Status clinicDecision={booking.clinicDecision} />
               </div>
 
               {/* ==================================================
@@ -502,25 +542,28 @@ export default function ClinicBookings({
 
               <div className="mb-4 grid gap-4 md:grid-cols-4">
                 <Metric
-                  label="Start date"
-                  value={
-                    booking.startDate ||
-                    "Not specified"
-                  }
+                  label="Requested Start"
+                  value={booking.startDate || "Not specified"}
                 />
 
                 <Metric
-                  label="End date"
-                  value={
-                    booking.endDate ||
-                    "Not specified"
-                  }
+                  label="Requested End"
+                  value={booking.endDate || "Not specified"}
                 />
 
                 <Metric
-                  label="Assigned Doctor"
-                  value="TBD"
+                  label="Final Start"
+                  value={booking.finalStartDate || "TBD"}
                 />
+
+                <Metric
+                  label="Final End"
+                  value={booking.finalEndDate || "TBD"}
+                />
+              </div>
+
+              <div className="mb-4 grid gap-4 md:grid-cols-2">
+                <Metric label="Assigned Doctor" value="TBD" />
 
                 <Metric
                   label="Proposed Price"
@@ -533,6 +576,116 @@ export default function ClinicBookings({
               </div>
 
               {/* ==================================================
+                  FINAL DATE EDITOR
+              ================================================== */}
+
+              <div className="mb-5 rounded-lg border border-border bg-background p-4">
+                <h4 className="mb-3 font-semibold">
+                  Set Final Procedure Dates
+                </h4>
+
+                <p className="mb-3 text-sm text-muted-foreground">
+                  Choose the final start and end dates for the procedure.
+                  These dates will be shown to the patient.
+                </p>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {/* FINAL START DATE */}
+
+                  <div>
+                    <label
+                      htmlFor={`final-start-${booking.id}`}
+                      className="mb-1 block text-sm font-medium"
+                    >
+                      Final Start Date
+                    </label>
+
+                    <input
+                      id={`final-start-${booking.id}`}
+                      type="date"
+                      value={
+                        dateInputs[booking.id]?.startDate ??
+                        booking.finalStartDate ??
+                        ""
+                      }
+                      onChange={(e) =>
+                        handleDateChange(
+                          booking.id,
+                          "startDate",
+                          e.target.value
+                        )
+                      }
+                      disabled={savingDates === booking.id}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                    />
+                  </div>
+
+                  {/* FINAL END DATE */}
+
+                  <div>
+                    <label
+                      htmlFor={`final-end-${booking.id}`}
+                      className="mb-1 block text-sm font-medium"
+                    >
+                      Final End Date
+                    </label>
+
+                    <input
+                      id={`final-end-${booking.id}`}
+                      type="date"
+                      min={
+                        dateInputs[booking.id]?.startDate ||
+                        booking.finalStartDate ||
+                        undefined
+                      }
+                      value={
+                        dateInputs[booking.id]?.endDate ??
+                        booking.finalEndDate ??
+                        ""
+                      }
+                      onChange={(e) =>
+                        handleDateChange(
+                          booking.id,
+                          "endDate",
+                          e.target.value
+                        )
+                      }
+                      disabled={savingDates === booking.id}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => handleSaveDates(booking)}
+                  disabled={savingDates === booking.id}
+                  className="mt-3 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
+                >
+                  {savingDates === booking.id
+                    ? "Saving..."
+                    : booking.finalStartDate && booking.finalEndDate
+                    ? "Update Dates"
+                    : "Set Final Dates"}
+                </button>
+
+                {dateError && (
+                  <p
+                    role="alert"
+                    className="mt-3 text-sm text-destructive"
+                  >
+                    {dateError}
+                  </p>
+                )}
+
+                {dateSuccess && (
+                  <p className="mt-3 text-sm text-green-600">
+                    {dateSuccess}
+                  </p>
+                )}
+              </div>
+
+              {/* ==================================================
                   PRICE EDITOR
               ================================================== */}
 
@@ -542,8 +695,7 @@ export default function ClinicBookings({
                 </h4>
 
                 <p className="mb-3 text-sm text-muted-foreground">
-                  Enter the price you want to propose
-                  to the patient.
+                  Enter the price you want to propose to the patient.
                 </p>
 
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
@@ -564,10 +716,7 @@ export default function ClinicBookings({
                         id={`price-${booking.id}`}
                         type="text"
                         inputMode="decimal"
-                        value={
-                          priceInputs[booking.id] ??
-                          ""
-                        }
+                        value={priceInputs[booking.id] ?? ""}
                         onChange={(e) =>
                           handlePriceChange(
                             booking.id,
@@ -576,15 +725,10 @@ export default function ClinicBookings({
                         }
                         placeholder={
                           booking.price !== null
-                            ? String(
-                                booking.price
-                              )
+                            ? String(booking.price)
                             : "Enter price"
                         }
-                        disabled={
-                          savingPrice ===
-                          booking.id
-                        }
+                        disabled={savingPrice === booking.id}
                         className="w-full rounded-md border border-border bg-background py-2 pl-7 pr-3 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50"
                       />
                     </div>
@@ -592,19 +736,11 @@ export default function ClinicBookings({
 
                   <button
                     type="button"
-                    onClick={() =>
-                      handleSavePrice(
-                        booking
-                      )
-                    }
-                    disabled={
-                      savingPrice ===
-                      booking.id
-                    }
+                    onClick={() => handleSavePrice(booking)}
+                    disabled={savingPrice === booking.id}
                     className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                   >
-                    {savingPrice ===
-                    booking.id
+                    {savingPrice === booking.id
                       ? "Saving..."
                       : booking.price !== null
                       ? "Update Price"
@@ -635,11 +771,7 @@ export default function ClinicBookings({
               <div className="flex gap-3">
                 <button
                   type="button"
-                  onClick={() =>
-                    openContactForm(
-                      booking
-                    )
-                  }
+                  onClick={() => openContactForm(booking)}
                   className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
                 >
                   Contact Patient
@@ -649,19 +781,11 @@ export default function ClinicBookings({
                   !booking.clinicDecision && (
                     <button
                       type="button"
-                      onClick={() =>
-                        handleAcceptRequest(
-                          booking
-                        )
-                      }
-                      disabled={
-                        accepting ===
-                        booking.id
-                      }
+                      onClick={() => handleAcceptRequest(booking)}
+                      disabled={accepting === booking.id}
                       className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50"
                     >
-                      {accepting ===
-                      booking.id
+                      {accepting === booking.id
                         ? "Accepting..."
                         : "Accept Request"}
                     </button>
@@ -672,12 +796,10 @@ export default function ClinicBookings({
                   CONTACT FORM
               ================================================== */}
 
-              {contactingBooking ===
-                booking.id && (
+              {contactingBooking === booking.id && (
                 <div className="mt-5 rounded-lg border border-border bg-background p-5">
                   <h4 className="mb-4 text-lg font-semibold">
-                    Contact{" "}
-                    {booking.patientName}
+                    Contact {booking.patientName}
                   </h4>
 
                   <div className="space-y-4">
@@ -689,11 +811,7 @@ export default function ClinicBookings({
                       <input
                         type="text"
                         value={subject}
-                        onChange={(e) =>
-                          setSubject(
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => setSubject(e.target.value)}
                         className="w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
                         placeholder="Email subject"
                         disabled={sending}
@@ -707,11 +825,7 @@ export default function ClinicBookings({
 
                       <textarea
                         value={message}
-                        onChange={(e) =>
-                          setMessage(
-                            e.target.value
-                          )
-                        }
+                        onChange={(e) => setMessage(e.target.value)}
                         rows={6}
                         className="w-full resize-none rounded-md border border-border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary"
                         placeholder="Write your message to the patient..."
@@ -720,10 +834,7 @@ export default function ClinicBookings({
                     </div>
 
                     {sendError && (
-                      <p
-                        role="alert"
-                        className="text-sm text-destructive"
-                      >
+                      <p role="alert" className="text-sm text-destructive">
                         {sendError}
                       </p>
                     )}
@@ -737,9 +848,7 @@ export default function ClinicBookings({
                     <div className="flex gap-3">
                       <button
                         type="button"
-                        onClick={
-                          closeContactForm
-                        }
+                        onClick={closeContactForm}
                         disabled={sending}
                         className="rounded-md border border-border px-4 py-2 text-sm font-medium hover:bg-muted disabled:opacity-50"
                       >
@@ -748,17 +857,11 @@ export default function ClinicBookings({
 
                       <button
                         type="button"
-                        onClick={() =>
-                          handleSendEmail(
-                            booking
-                          )
-                        }
+                        onClick={() => handleSendEmail(booking)}
                         disabled={sending}
                         className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
                       >
-                        {sending
-                          ? "Sending..."
-                          : "Send Email"}
+                        {sending ? "Sending..." : "Send Email"}
                       </button>
                     </div>
                   </div>
@@ -810,13 +913,9 @@ function Metric({
 }) {
   return (
     <div>
-      <p className="text-sm text-muted-foreground">
-        {label}
-      </p>
+      <p className="text-sm text-muted-foreground">{label}</p>
 
-      <p className="font-medium">
-        {value}
-      </p>
+      <p className="font-medium">{value}</p>
     </div>
   );
 }

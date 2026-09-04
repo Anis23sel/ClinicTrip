@@ -14,6 +14,25 @@ import { createClient } from "@/app/utils/supabase/client";
 
 const supabase = createClient();
 
+function formatRequestDate(
+  startDate: string | null,
+  endDate: string | null
+) {
+  if (!startDate) return "Not specified";
+
+  const start = new Date(
+    `${startDate}T00:00:00`
+  ).toLocaleDateString();
+
+  if (!endDate || startDate === endDate) {
+    return start;
+  }
+
+  return `${start} - ${new Date(
+    `${endDate}T00:00:00`
+  ).toLocaleDateString()}`;
+}
+
 type Booking = {
   id: string | number;
   clinicId: string;
@@ -21,6 +40,8 @@ type Booking = {
   procedure: string;
   startDate: string;
   endDate: string;
+  finalStartDate: string | null;
+  finalEndDate: string | null;
   doctor: string;
   date: string;
   location: string;
@@ -354,13 +375,29 @@ export default function BookingCard({
 
           <div>
             <p className="text-sm text-muted-foreground">
-              Date
+                Requested Dates
             </p>
 
-            <p className="font-medium">
-              {booking.date}
-            </p>
-          </div>
+  <p className="font-medium">
+    {booking.date}
+  </p>
+
+  {booking.finalStartDate &&
+    booking.finalEndDate && (
+      <div className="mt-2">
+        <p className="text-sm text-muted-foreground">
+          Final Dates
+        </p>
+
+        <p className="font-medium text-primary">
+          {formatRequestDate(
+            booking.finalStartDate,
+            booking.finalEndDate
+          )}
+        </p>
+      </div>
+    )}
+</div>
 
           {/* Price */}
 

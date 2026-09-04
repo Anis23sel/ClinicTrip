@@ -87,7 +87,14 @@ export async function POST(request: Request) {
       await supabase
         .from("Patient_request")
         .select(
-          "id, id_clinic, inquiry_completed, clinic_decision"
+          `
+            id,
+            id_clinic,
+            inquiry_completed,
+            clinic_decision,
+            final_start_date,
+            final_end_date
+          `
         )
         .eq("id", requestId)
         .eq("id_clinic", clinic.id)
@@ -120,7 +127,41 @@ export async function POST(request: Request) {
     }
 
     // --------------------------------------------------
-    // 6. Check if already accepted
+    // 6. Make sure final dates are set
+    // --------------------------------------------------
+
+    if (
+      !patientRequest.final_start_date ||
+      !patientRequest.final_end_date
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The final start and end dates must be set before accepting the request.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 7. Make sure final end date is not before start date
+    // --------------------------------------------------
+
+    if (
+      patientRequest.final_end_date <
+      patientRequest.final_start_date
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The final end date cannot be before the final start date.",
+        },
+        { status: 400 }
+      );
+    }
+
+    // --------------------------------------------------
+    // 8. Check if already accepted
     // --------------------------------------------------
 
     if (patientRequest.clinic_decision) {
@@ -133,7 +174,7 @@ export async function POST(request: Request) {
     }
 
     // --------------------------------------------------
-    // 7. Accept request
+    // 9. Accept request
     // --------------------------------------------------
 
     const { data: updatedRequest, error: updateError } =
@@ -145,7 +186,7 @@ export async function POST(request: Request) {
         .eq("id", requestId)
         .eq("id_clinic", clinic.id)
         .select(
-          "id, clinic_decision, patient_decision"
+          "id, clinic_decision, patient_decision, final_start_date, final_end_date"
         )
         .single();
 
@@ -165,7 +206,7 @@ export async function POST(request: Request) {
     }
 
     // --------------------------------------------------
-    // 8. Success
+    // 10. Success
     // --------------------------------------------------
 
     return NextResponse.json({

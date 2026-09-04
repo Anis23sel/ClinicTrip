@@ -1,14 +1,14 @@
 "use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
-import { MapPin } from "lucide-react";
+import { MapPin, Plane, Car } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
 
-type BookingTab = "clinic";
+type BookingTab = "clinic" | "accommodation" | "transfer";
 
 type ClinicProcedure = {
   id: string;
@@ -47,12 +47,6 @@ export default function ClinicPage() {
    * ============================================================
    * SEARCH FILTERS
    * ============================================================
-   *
-   * Example:
-   * /clinic/123?procedures=Rhinoplasty,Liposuction
-   *
-   * If there is no procedures parameter:
-   * selectedProcedures = []
    */
 
   const proceduresParam = searchParams.get("procedures");
@@ -71,31 +65,71 @@ export default function ClinicPage() {
   const [activeTab, setActiveTab] = useState<BookingTab>("clinic");
 
   /*
-   * Booking information
+   * ============================================================
+   * BOOKING INFORMATION
+   * ============================================================
    */
+
   const [booking, setBooking] = useState({
     doctorId: "",
     startDate: "",
     endDate: "",
+
+    // Accommodation
+    accommodationId: "",
+    roomType: "",
+    nights: 1,
+    includeBreakfast: false,
+    includeDinner: false,
+
+    // Transfer
+    transferPackage: false,
   });
 
   /*
-   * Date picker
+   * ============================================================
+   * STATIC ACCOMMODATIONS
+   * ============================================================
    */
+
+  const accommodations = [
+    {
+      id: "hotel-1",
+      name: "Partner Hotel Premium",
+      distance: "5 min walk from clinic",
+      roomTypes: [
+        { type: "Single Room", price: 60 },
+        { type: "Double Bed Room", price: 80 },
+        { type: "Suite", price: 120 },
+      ],
+    },
+    {
+      id: "hotel-2",
+      name: "Partner Hotel Standard",
+      distance: "10 min walk from clinic",
+      roomTypes: [
+        { type: "Single Room", price: 40 },
+        { type: "Double Bed Room", price: 55 },
+      ],
+    },
+  ];
+
+  /*
+   * ============================================================
+   * DATE PICKER
+   * ============================================================
+   */
+
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
 
   /*
-   * Procedures selected by the patient.
-   *
-   * IMPORTANT:
-   * This starts empty.
-   *
-   * We only preselect procedures if the user actually
-   * came from a filtered search.
+   * ============================================================
+   * PROCEDURES SELECTED BY PATIENT
+   * ============================================================
    */
-  const [selectedProcedureIds, setSelectedProcedureIds] = useState<string[]>(
-    []
-  );
+
+  const [selectedProcedureIds, setSelectedProcedureIds] =
+    useState<string[]>([]);
 
   /*
    * ============================================================
@@ -111,11 +145,13 @@ export default function ClinicPage() {
       /*
        * 1. Load clinic
        */
-      const { data: clinicRow, error: clinicError } = await supabase
-        .from("clinics")
-        .select("id, clinic_name, country, city_id")
-        .eq("id", id)
-        .single();
+
+      const { data: clinicRow, error: clinicError } =
+        await supabase
+          .from("clinics")
+          .select("id, clinic_name, country, city_id")
+          .eq("id", id)
+          .single();
 
       if (clinicError || !clinicRow) {
         throw clinicError || new Error("Clinic not found.");
@@ -124,6 +160,7 @@ export default function ClinicPage() {
       /*
        * 2. Load city
        */
+
       const { data: cityRow, error: cityError } = await supabase
         .from("cities")
         .select("city")
@@ -137,6 +174,7 @@ export default function ClinicPage() {
       /*
        * 3. Load ALL procedures offered by this clinic
        */
+
       const { data: clinicProcedureRows, error: procedureError } =
         await supabase
           .from("clinic_procedures")
@@ -159,10 +197,8 @@ export default function ClinicPage() {
 
       /*
        * Build ALL clinic procedures.
-       *
-       * IMPORTANT:
-       * The ID here is clinic_procedures.id.
        */
+
       const procedures: ClinicProcedure[] = (clinicProcedureRows || [])
         .map((row) => {
           const procedure = Array.isArray(row.medical_procedure)
@@ -191,20 +227,6 @@ export default function ClinicPage() {
        * ========================================================
        * INITIAL PROCEDURE SELECTION
        * ========================================================
-       *
-       * NO FILTER:
-       *
-       * ?procedures=
-       *
-       * => show ALL procedures
-       * => select NOTHING
-       *
-       * FILTER:
-       *
-       * ?procedures=Rhinoplasty,Liposuction
-       *
-       * => show matching procedures
-       * => preselect matching procedures
        */
 
       const initiallySelectedProcedureIds =
@@ -225,6 +247,7 @@ export default function ClinicPage() {
       /*
        * 4. Load doctors + speciality + procedures
        */
+
       const { data: doctorRows, error: doctorError } = await supabase
         .from("doctors")
         .select(`
@@ -275,7 +298,7 @@ export default function ClinicPage() {
       /*
        * 5. Save complete clinic
        */
-      
+
       setClinic({
         id: String(clinicRow.id),
         name: clinicRow.clinic_name,
@@ -285,7 +308,6 @@ export default function ClinicPage() {
         procedures,
         doctors,
       });
-      
     };
 
     loadClinic()
@@ -301,13 +323,6 @@ export default function ClinicPage() {
       .finally(() => {
         setLoading(false);
       });
-
-    /*
-     * IMPORTANT:
-     * Only depend on id.
-     *
-     * This prevents unnecessary reloads.
-     */
   }, [id, supabase, selectedProcedures.join(",")]);
 
   /*
@@ -322,6 +337,7 @@ export default function ClinicPage() {
     /*
      * Patient must select at least one procedure.
      */
+
     if (selectedProcedureIds.length === 0) {
       alert("Please select at least one procedure.");
       return;
@@ -330,6 +346,7 @@ export default function ClinicPage() {
     /*
      * Check authentication.
      */
+
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -342,6 +359,7 @@ export default function ClinicPage() {
     /*
      * Convert selected procedure IDs into names.
      */
+
     const selectedProcedureNames = clinic.procedures
       .filter((procedure) =>
         selectedProcedureIds.includes(procedure.id)
@@ -351,6 +369,7 @@ export default function ClinicPage() {
     /*
      * Create patient request.
      */
+
     const response = await fetch("/api/patient-requests", {
       method: "POST",
       headers: {
@@ -383,7 +402,7 @@ export default function ClinicPage() {
 
   /*
    * ============================================================
-   * DATE PICKER
+   * DATE RANGE CHANGE
    * ============================================================
    */
 
@@ -435,12 +454,6 @@ export default function ClinicPage() {
    * ============================================================
    * DISPLAYED PROCEDURES
    * ============================================================
-   *
-   * NO FILTER:
-   * -> ALL clinic procedures
-   *
-   * FILTER:
-   * -> ONLY matching procedures
    */
 
   const displayedProcedures =
@@ -505,7 +518,13 @@ export default function ClinicPage() {
 
               <div className="border-b border-border flex">
 
-                {(["clinic"] as const).map((tab) => (
+                {(
+                  [
+                    "clinic",
+                    "accommodation",
+                    "transfer",
+                  ] as const
+                ).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -521,14 +540,20 @@ export default function ClinicPage() {
 
               </div>
 
+              {/* ==================================================
+                  TAB CONTENT
+              ================================================== */}
+
               <div className="p-6">
+
+                {/* ==================================================
+                    CLINIC TAB
+                ================================================== */}
 
                 {activeTab === "clinic" && (
                   <div className="space-y-6">
 
-                    {/* ==================================================
-                        ABOUT
-                    ================================================== */}
+                    {/* ABOUT */}
 
                     <div>
 
@@ -543,9 +568,7 @@ export default function ClinicPage() {
 
                     </div>
 
-                    {/* ==================================================
-                        PROCEDURES
-                    ================================================== */}
+                    {/* PROCEDURES */}
 
                     <div>
 
@@ -667,9 +690,7 @@ export default function ClinicPage() {
 
                     </div>
 
-                    {/* ==================================================
-                        DOCTORS
-                    ================================================== */}
+                    {/* DOCTORS */}
 
                     <div>
 
@@ -783,9 +804,7 @@ export default function ClinicPage() {
 
                     </div>
 
-                    {/* ==================================================
-                        DATES
-                    ================================================== */}
+                    {/* DATES */}
 
                     <div className="space-y-4">
 
@@ -806,7 +825,6 @@ export default function ClinicPage() {
                             pagedNavigation
                             captionLayout="dropdown"
                             className="clinic-calendar mx-auto"
-
                             style={
                               {
                                 "--rdp-accent-color":
@@ -825,7 +843,6 @@ export default function ClinicPage() {
                                   "1px solid #391419",
                               } as CSSProperties
                             }
-
                             styles={{
                               months: {
                                 display: "flex",
@@ -839,7 +856,6 @@ export default function ClinicPage() {
                                 margin: 0,
                               },
                             }}
-
                             modifiersStyles={{
                               range_start: {
                                 backgroundColor: "#391419",
@@ -877,6 +893,229 @@ export default function ClinicPage() {
                   </div>
                 )}
 
+                {/* ==================================================
+                    ACCOMMODATION TAB
+                ================================================== */}
+
+                {activeTab === "accommodation" && (
+                  <div className="space-y-5">
+
+                    <div>
+
+                      <h3 className="text-xl font-semibold">
+                        Select Accommodation
+                      </h3>
+
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Choose a partner hotel and room for your stay.
+                      </p>
+
+                    </div>
+
+                    {accommodations.map((accommodation) => (
+
+                      <div
+                        key={accommodation.id}
+                        className="border-2 border-border rounded-xl p-5"
+                      >
+
+                        <div className="mb-4">
+
+                          <h4 className="font-semibold text-lg">
+                            {accommodation.name}
+                          </h4>
+
+                          <p className="text-sm text-muted-foreground">
+                            {accommodation.distance}
+                          </p>
+
+                        </div>
+
+                        <div className="space-y-4 border-t border-border pt-4">
+
+                          <div>
+
+                            <p className="text-sm font-medium mb-2">
+                              Room Type
+                            </p>
+
+                            <div className="grid sm:grid-cols-2 gap-2">
+
+                              {accommodation.roomTypes.map((room) => (
+
+                                <div
+                                  key={room.type}
+                                  className="p-3 rounded-lg border-2 border-border"
+                                >
+
+                                  <div className="font-medium text-sm">
+                                    {room.type}
+                                  </div>
+
+                                  <div className="text-primary font-semibold text-sm">
+                                    ${room.price}/night
+                                  </div>
+
+                                </div>
+
+                              ))}
+
+                            </div>
+
+                          </div>
+
+                          <div>
+
+                            <p className="text-sm font-medium mb-2">
+                              Meals
+                            </p>
+
+                            <div className="space-y-2">
+
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">
+                                  Breakfast
+                                </span>
+
+                                <span className="text-primary text-sm font-semibold">
+                                  +$15/night
+                                </span>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <span className="text-sm">
+                                  Dinner
+                                </span>
+
+                                <span className="text-primary text-sm font-semibold">
+                                  +$25/night
+                                </span>
+                              </div>
+
+                            </div>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    ))}
+
+                  </div>
+                )}
+
+                {/* ==================================================
+                    TRANSFER TAB
+                ================================================== */}
+
+                {activeTab === "transfer" && (
+                  <div className="space-y-5">
+
+                    <div>
+
+                      <h3 className="text-xl font-semibold">
+                        Transfer Services
+                      </h3>
+
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Make your transportation between the airport,
+                        hotel, and clinic easier.
+                      </p>
+
+                    </div>
+
+                    <div className="border-2 border-border rounded-xl p-5">
+
+                      <div className="mb-4">
+
+                        <h4 className="font-semibold text-lg mb-1">
+                          Complete Transfer Package
+                        </h4>
+
+                        <p className="text-sm text-muted-foreground mb-3">
+                          Airport pick-up and drop-off plus daily
+                          hotel ↔ clinic transfers.
+                        </p>
+
+                        <div className="text-primary font-bold text-xl">
+                          $80{" "}
+                          <span className="text-sm font-normal text-muted-foreground">
+                            total
+                          </span>
+                        </div>
+
+                      </div>
+
+                      <div className="grid sm:grid-cols-2 gap-3 border-t border-border pt-4">
+
+                        {/* Airport Transfer */}
+
+                        <div className="flex items-center gap-3 bg-background rounded-lg p-3">
+
+                          <Plane
+                            size={18}
+                            className="text-primary shrink-0"
+                          />
+
+                          <div>
+
+                            <p className="text-sm font-medium">
+                              Airport Transfer
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              Round-trip to hotel
+                            </p>
+
+                            <p className="text-xs text-primary font-semibold">
+                              $50
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                        {/* Clinic Transfers */}
+
+                        <div className="flex items-center gap-3 bg-background rounded-lg p-3">
+
+                          <Car
+                            size={18}
+                            className="text-primary shrink-0"
+                          />
+
+                          <div>
+
+                            <p className="text-sm font-medium">
+                              Clinic Transfers
+                            </p>
+
+                            <p className="text-xs text-muted-foreground">
+                              Daily hotel ↔ clinic
+                            </p>
+
+                            <p className="text-xs text-primary font-semibold">
+                              $30
+                            </p>
+
+                          </div>
+
+                        </div>
+
+                      </div>
+
+                    </div>
+
+                    <p className="text-sm text-muted-foreground bg-accent/30 rounded-xl p-4">
+                      All transfers include professional drivers and
+                      comfortable vehicles. Transfer times are coordinated
+                      with your appointment schedule.
+                    </p>
+
+                  </div>
+                )}
+
               </div>
 
             </div>
@@ -888,6 +1127,8 @@ export default function ClinicPage() {
           ======================================================== */}
 
           <div className="space-y-5">
+
+            {/* Your Request */}
 
             <div className="bg-primary/10 rounded-xl border-2 border-primary p-6">
 

@@ -19,6 +19,8 @@ type RequestBooking = {
   inquiryCompleted: boolean;
   clinicDecision: boolean;
   patientDecision: boolean;
+  finalStartDate: string | null;
+  finalEndDate: string | null;
 };
 
 const supabase = createClient();
@@ -125,6 +127,8 @@ export default function PatientRequests() {
               procedure,
               start_date,
               end_date,
+              final_start_date,
+              final_end_date,
               inquiry_completed,
               clinic_decision,
               patient_decision,
@@ -257,6 +261,12 @@ export default function PatientRequests() {
 
               endDate:
                 request.end_date || "",
+
+              finalStartDate:
+                request.final_start_date || null,
+
+              finalEndDate:
+               request.final_end_date || null,
 
               date: formatRequestDate(
                 request.start_date,

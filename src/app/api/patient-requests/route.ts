@@ -209,17 +209,8 @@ export async function POST(request: Request) {
       end_date: endDate,
     };
 
-    /*
-     * Only include doctor_id if your Patient_request table
-     * actually has this column.
-     *
-     * If your table does NOT have doctor_id, remove the
-     * following two lines.
-     */
-    if (doctorId) {
-      insertData.doctor_id = doctorId;
-    }
-
+  
+    insertData.doctor_id = doctorId;
     const { data: newRequest, error: requestError } =
       await supabase
         .from("Patient_request")
