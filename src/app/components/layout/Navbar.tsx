@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import "flag-icons/css/flag-icons.min.css";
-import { Menu, X, Globe, ChevronDown } from "lucide-react";
+import { Menu, X, Globe, ChevronDown, CircleUserRound } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 
 export default function Navbar() {
@@ -19,6 +19,20 @@ export default function Navbar() {
   const [user, setUser] = useState<any>(null);
   const [dashboardPath, setDashboardPath] = useState<string | null>(null);
   const [loadingUser, setLoadingUser] = useState(true);
+
+  const languageMenuRef = useRef<HTMLDivElement>(null);
+  const currencyMenuRef = useRef<HTMLDivElement>(null);
+
+  const userInitial =
+  user?.user_metadata?.firstName?.charAt(0)?.toUpperCase() ||
+  user?.user_metadata?.first_name?.charAt(0)?.toUpperCase() ||
+  user?.email?.charAt(0)?.toUpperCase() ||
+  "U";
+
+const avatarUrl =
+  user?.user_metadata?.avatar_url ||
+  user?.user_metadata?.picture ||
+  null;
 
   const languageOptions = {
     EN: { flag: "gb", label: "English" },
@@ -38,6 +52,34 @@ export default function Navbar() {
   const navLinks = [
     { href: "/about", label: "About us" },
   ];
+
+  // Close language/currency menus when clicking outside
+useEffect(() => {
+  const handleClickOutside = (event: MouseEvent) => {
+    const target = event.target as Node;
+
+    if (
+      languageMenuRef.current &&
+      !languageMenuRef.current.contains(target)
+    ) {
+      setLanguageMenuOpen(false);
+    }
+
+    if (
+      currencyMenuRef.current &&
+      !currencyMenuRef.current.contains(target)
+    ) {
+      setCurrencyMenuOpen(false);
+    }
+  };
+
+  document.addEventListener("mousedown", handleClickOutside);
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside);
+  };
+}, []);
+
 
   // Check the current user
   useEffect(() => {
@@ -110,7 +152,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Language */}
-          <div className="relative hidden md:block">
+          <div ref={languageMenuRef} className="relative hidden md:block">
             <button
               onClick={() => setLanguageMenuOpen((prev) => !prev)}
               className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
@@ -132,9 +174,9 @@ export default function Navbar() {
                   <button
                     key={code}
                     onClick={() => {
-                      setLanguage(code);
-                      setLanguageMenuOpen(false);
-                    }}
+  setLanguageMenuOpen((prev) => !prev);
+  setCurrencyMenuOpen(false);
+}}
                     className="flex w-full items-center gap-3 px-4 py-3 text-left transition hover:bg-accent"
                   >
                     <span className={`fi fi-${lang.flag}`} />
@@ -147,9 +189,12 @@ export default function Navbar() {
           </div>
 
           {/* Desktop Currency */}
-          <div className="relative hidden md:block">
+          <div ref={currencyMenuRef} className="relative hidden md:block">
             <button
-              onClick={() => setCurrencyMenuOpen((prev) => !prev)}
+              onClick={() => {
+  setCurrencyMenuOpen((prev) => !prev);
+  setLanguageMenuOpen(false);
+}}
               className="flex items-center gap-2 rounded-lg px-3 py-2 transition hover:bg-accent"
             >
               <span className="text-sm font-medium">
@@ -226,14 +271,15 @@ export default function Navbar() {
                 </>
               ) : (
                 <>
-                  {dashboardPath && (
-                    <Link
-                      href={dashboardPath}
-                      className="text-sm text-foreground transition-colors hover:text-primary"
-                    >
-                      Profile
-                    </Link>
-                  )}
+                 {dashboardPath && (
+  <Link
+    href={dashboardPath}
+    title="Profile"
+    className="flex items-center justify-center text-foreground transition-colors hover:text-primary"
+  >
+    <CircleUserRound size={32} strokeWidth={1.7} />
+  </Link>
+)}
 
                   <button
                     onClick={handleSignOut}
@@ -344,14 +390,15 @@ export default function Navbar() {
                   ) : (
                     <>
                       {dashboardPath && (
-                        <Link
-                          href={dashboardPath}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex-1 rounded-lg bg-primary px-4 py-2 text-center text-primary-foreground"
-                        >
-                          Profile
-                        </Link>
-                      )}
+  <Link
+    href={dashboardPath}
+    onClick={() => setMobileMenuOpen(false)}
+    className="flex items-center justify-center px-2"
+    title="Profile"
+  >
+    <CircleUserRound size={32} strokeWidth={1.7} />
+  </Link>
+)}
 
                       <button
                         onClick={handleSignOut}

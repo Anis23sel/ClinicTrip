@@ -173,7 +173,7 @@ export default function BookingCard({
 
   const handleCancel = async () => {
     const confirmed = window.confirm(
-      "Are you sure you want to cancel this request?"
+      "Are you sure you want to cancel this consultation?"
     );
 
     if (!confirmed) return;
@@ -187,12 +187,12 @@ export default function BookingCard({
 
     if (error) {
       console.error(
-        "Failed to cancel request:",
+        "Failed to cancel consultation:",
         error
       );
 
       alert(
-        "We could not cancel this request. Please try again."
+        "We could not cancel this consultation. Please try again."
       );
 
       setCancelling(false);
@@ -203,12 +203,12 @@ export default function BookingCard({
   };
 
   // --------------------------------------------------
-  // Accept request
+  // Accept proposal
   // --------------------------------------------------
 
   const handleAcceptRequest = async () => {
     const confirmed = window.confirm(
-      "Are you sure you want to accept this request?"
+      "Are you sure you want to accept this proposal?"
     );
 
     if (!confirmed) return;
@@ -236,21 +236,21 @@ export default function BookingCard({
       if (!response.ok) {
         throw new Error(
           result.error ||
-            "We could not accept this request."
+            "We could not accept this proposal."
         );
       }
 
       setPatientDecision(true);
     } catch (error) {
       console.error(
-        "Failed to accept request:",
+        "Failed to accept proposal:",
         error
       );
 
       alert(
         error instanceof Error
           ? error.message
-          : "We could not accept this request."
+          : "We could not accept this proposal."
       );
     } finally {
       setAccepting(false);
@@ -479,7 +479,7 @@ export default function BookingCard({
               >
                 {accepting
                   ? "Accepting..."
-                  : "Accept Request"}
+                  : "Accept proposal"}
               </button>
             )}
 

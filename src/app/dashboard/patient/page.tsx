@@ -7,7 +7,7 @@ import PatientDocuments from "../../components/dashboard/patient/PatientDocument
 import PatientProfile from "../../components/dashboard/patient/PatientProfile";
 import PatientRequests from "@/app/components/dashboard/patient/PatientRequests";
 
-type Tab = "requests" | "profile" | "documents";
+type Tab = "consultations" | "profile" | "documents";
 
 type Profile = {
   firstName: string;
@@ -18,7 +18,7 @@ type Profile = {
 };
 
 const tabs = [
-  { id: "requests" as const, label: "My requests", icon: Calendar },
+  { id: "consultations" as const, label: "My consultations", icon: Calendar },
   { id: "profile" as const, label: "Profile", icon: User },
   { id: "documents" as const, label: "Documents", icon: FileText },
 ];
@@ -26,7 +26,7 @@ const tabs = [
 export default function PatientDashboard() {
   const supabase = createClient();
 
-  const [activeTab, setActiveTab] = useState<Tab>("requests");
+  const [activeTab, setActiveTab] = useState<Tab>("consultations");
 
   const [profile, setProfile] = useState<Profile>({
     firstName: "",
@@ -230,7 +230,7 @@ export default function PatientDashboard() {
 
           {/* Content */}
           <div className="min-w-0 flex-1">
-            {activeTab === "requests" && (
+            {activeTab === "consultations" && (
               <PatientRequests />
             )}
 

@@ -65,7 +65,7 @@ export default function PatientRequests() {
 
         if (!user) {
           throw new Error(
-            "Please sign in to view your requests."
+            "Please sign in to view your consultations."
           );
         }
 
@@ -110,7 +110,7 @@ export default function PatientRequests() {
         }
 
         // ============================================================
-        // 4. GET PATIENT REQUESTS
+        // 4. GET PATIENT consultations
         // ============================================================
 
         const {
@@ -246,7 +246,7 @@ export default function PatientRequests() {
 
               clinicName:
                 clinic?.clinic_name ||
-                "Clinic request",
+                "Clinic proposal",
 
               procedure:
                 request.procedure ||
@@ -327,14 +327,14 @@ export default function PatientRequests() {
         );
       } catch (loadError) {
         console.error(
-          "Failed to load patient requests:",
+          "Failed to load patient consultations:",
           loadError
         );
 
         setError(
           loadError instanceof Error
             ? loadError.message
-            : "We could not load your requests right now."
+            : "We could not load your consultations right now."
         );
       } finally {
         setLoading(false);
@@ -352,14 +352,14 @@ export default function PatientRequests() {
 
       <div className="mb-6 flex items-center justify-between">
         <h2 className="text-2xl font-bold">
-          My Requests
+          My consultations
         </h2>
 
         <Link
           href="/search"
           className="rounded-lg bg-primary px-4 py-2 text-primary-foreground transition-opacity hover:opacity-90"
         >
-          New Request
+          New consultation
         </Link>
       </div>
 
@@ -371,7 +371,7 @@ export default function PatientRequests() {
 
         {loading && (
           <p className="text-muted-foreground">
-            Loading your requests...
+            Loading your consultations...
           </p>
         )}
 
@@ -388,7 +388,7 @@ export default function PatientRequests() {
           !error &&
           requests.length === 0 && (
             <p className="text-muted-foreground">
-              You have not made any requests yet.
+              You have not made any consultations yet.
             </p>
           )}
 
