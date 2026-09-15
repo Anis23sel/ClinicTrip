@@ -19,6 +19,26 @@ interface BookingInquiryModalProps {
   endDate?: string;
 }
 
+// function to hide contact information for the additonal field in the contact form
+
+function hideContactInformation(text: string) {
+  let sanitized = text;
+
+  // Hide email addresses
+  sanitized = sanitized.replace(
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
+    "HIDDEN"
+  );
+
+  // Hide phone numbers
+  sanitized = sanitized.replace(
+    /(?<!\d)(?:\+|00)?\d[\d\s().-]{7,}\d(?!\d)/g,
+    "HIDDEN"
+  );
+
+  return sanitized;
+}
+
 export default function BookingInquiryModal({
   isOpen,
   onClose,
@@ -108,7 +128,13 @@ export default function BookingInquiryModal({
     const response = await fetch("/api/booking-inquiry", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clinicId, requestId, ...form }),
+      body: JSON.stringify({
+  clinicId,
+  requestId,
+  ...form,
+  name: hideContactInformation(form.name),
+  details: hideContactInformation(form.details),
+}),
     });
 
     if (!response.ok) {

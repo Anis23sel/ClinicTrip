@@ -29,6 +29,25 @@ function getUserName(
   );
 }
 
+//function to hide contact information in the inquiry details
+function hideContactInformation(text: string) {
+  let sanitized = text;
+
+  // Hide email addresses
+  sanitized = sanitized.replace(
+    /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
+    "HIDDEN"
+  );
+
+  // Hide phone numbers
+  sanitized = sanitized.replace(
+    /(?<!\d)(?:\+|00)?\d[\d\s().-]{7,}\d(?!\d)/g,
+    "HIDDEN"
+  );
+
+  return sanitized;
+}
+
 async function getClinic(
   supabase: ReturnType<typeof createClient>,
   clinicId: string
@@ -165,9 +184,7 @@ export async function POST(request: Request) {
         : null;
 
     const details =
-      typeof body.details === "string"
-        ? body.details.trim()
-        : "";
+      typeof body.details === "string" ? hideContactInformation(body.details.trim()) : "";
 
     // --------------------------------------------------
     // 3. Validate
@@ -303,7 +320,7 @@ export async function POST(request: Request) {
     // 8. Get patient name
     // --------------------------------------------------
 
-    const patientName = getUserName(user).trim();
+    const patientName = hideContactInformation(getUserName(user).trim());
 
     if (!patientName) {
       return NextResponse.json(
@@ -381,7 +398,7 @@ export async function POST(request: Request) {
       await transporter.sendMail({
         from: `ClinicTrip <${gmailUser}>`,
         to: clinic.email,
-        subject: `New inquiry from ${patientName}`,
+        subject: `New inquiry from ${hideContactInformation(patientName)}`,
         text: message,
       });
     } catch (emailError) {
