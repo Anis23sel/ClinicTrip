@@ -382,21 +382,18 @@ export default function BookingCard({
     {booking.date}
   </p>
 
-  {booking.finalStartDate &&
-    booking.finalEndDate && (
-      <div className="mt-2">
-        <p className="text-sm text-muted-foreground">
-          Final Dates
-        </p>
+  {(booking.finalStartDate || booking.finalEndDate) && (
+    <div className="mt-2 space-y-1">
+      <p className="text-sm text-muted-foreground">
+        Final surgery dates
+      </p>
 
-        <p className="font-medium text-primary">
-          {formatRequestDate(
-            booking.finalStartDate,
-            booking.finalEndDate
-          )}
-        </p>
-      </div>
-    )}
+      <p className="font-medium text-primary">
+        Start: {booking.finalStartDate || "Not specified"} End: {booking.finalEndDate || "Not specified"}
+        
+      </p>
+    </div>
+  )}
 </div>
 
           {/* Price */}

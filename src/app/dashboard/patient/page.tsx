@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, FileText, User } from "lucide-react";
+import { Calendar, FileText, ReceiptText, User } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import PatientDocuments from "../../components/dashboard/patient/PatientDocuments";
 import PatientProfile from "../../components/dashboard/patient/PatientProfile";
 import PatientRequests from "@/app/components/dashboard/patient/PatientRequests";
+import PatientInvoices from "@/app/components/dashboard/patient/PatientInvoices";
 
-type Tab = "consultations" | "profile" | "documents";
+type Tab = "consultations" | "invoices" | "profile" | "documents";
 
 type Profile = {
   firstName: string;
@@ -19,6 +20,7 @@ type Profile = {
 
 const tabs = [
   { id: "consultations" as const, label: "My consultations", icon: Calendar },
+  { id: "invoices" as const, label: "Invoices", icon: ReceiptText },
   { id: "profile" as const, label: "Profile", icon: User },
   { id: "documents" as const, label: "Documents", icon: FileText },
 ];
@@ -233,6 +235,8 @@ export default function PatientDashboard() {
             {activeTab === "consultations" && (
               <PatientRequests />
             )}
+
+            {activeTab === "invoices" && <PatientInvoices />}
 
             {activeTab === "profile" && (
               <>
