@@ -1,13 +1,14 @@
 "use client";
 
-import { ChevronDown, ChevronUp, ReceiptText } from "lucide-react";
+import { ChevronDown, ChevronUp, Download, ReceiptText } from "lucide-react";
 import { useState } from "react";
 
 type Props = {
   onProceed: () => void;
+  onDownload: () => void;
 };
 
-export default function ProcessingFeeInvoice({ onProceed }: Props) {
+export default function ProcessingFeeInvoice({ onProceed, onDownload }: Props) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -23,7 +24,11 @@ export default function ProcessingFeeInvoice({ onProceed }: Props) {
             <p className="mt-1 text-sm text-muted-foreground">Rhinoplasty · Istanbul Medical Center</p>
           </div>
         </div>
-        <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">Due</span>
+        <div className="text-right">
+          <span className="rounded-full bg-yellow-100 px-3 py-1 text-xs font-medium text-yellow-800">Due</span>
+          <p className="mt-3 text-lg font-bold">€40.00</p>
+          <p className="text-xs text-muted-foreground">due now</p>
+        </div>
       </div>
 
       <button
@@ -32,7 +37,7 @@ export default function ProcessingFeeInvoice({ onProceed }: Props) {
         aria-expanded={open}
         className="mt-5 flex w-full items-center justify-between border-t border-border pt-4 text-left text-sm font-medium hover:text-primary"
       >
-        View invoice details
+        <span>{open ? "Hide invoice details" : "View invoice details"}</span>
         {open ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
       </button>
 
@@ -50,8 +55,8 @@ export default function ProcessingFeeInvoice({ onProceed }: Props) {
             <span>Remaining at clinic</span>
             <span>€2,460.00</span>
           </div>
-          <div className="flex justify-between gap-4 font-semibold text-primary">
-            <span>Total due now</span>
+          <div className="flex justify-between gap-4 rounded-lg bg-accent p-3 font-semibold text-primary">
+            <span>Pay now</span>
             <span>€40.00</span>
           </div>
           <p className="text-xs leading-5 text-muted-foreground">
@@ -63,6 +68,13 @@ export default function ProcessingFeeInvoice({ onProceed }: Props) {
             className="w-full rounded-lg bg-primary px-4 py-3 text-sm font-medium text-primary-foreground transition-opacity hover:opacity-90"
           >
             Proceed to payment
+          </button>
+          <button
+            type="button"
+            onClick={onDownload}
+            className="flex w-full items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium transition-colors hover:bg-accent"
+          >
+            <Download size={16} /> Download invoice PDF
           </button>
         </div>
       )}

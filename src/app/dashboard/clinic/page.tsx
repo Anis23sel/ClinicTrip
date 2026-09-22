@@ -8,8 +8,9 @@ import ClinicBookings from '@/app/components/dashboard/clinic/ClinicBookings';
 import ClinicDoctors from '../../components/dashboard/clinic/ClinicDoctors';
 import ClinicProcedures from '../../components/dashboard/clinic/ClinicProcedures';
 import ClinicProfile from '../../components/dashboard/clinic/ClinicProfile';
+import ClinicOverview from '@/app/components/dashboard/clinic/ClinicOverview';
 
-type Tab = 'profile' | 'doctors' | 'procedures' | 'accommodations' | 'bookings';
+type Tab = 'overview' | 'profile' | 'doctors' | 'procedures' | 'accommodations' | 'bookings';
 
 export type ClinicRecord = {
   id: string;
@@ -38,13 +39,20 @@ export type MedicalProcedureOption = {
 export type ClinicBookingRecord = {
   id: string;
   patientName: string;
+  procedure: string | null;
   startDate: string | null;
   endDate: string | null;
+  finalStartDate: string | null;
+  finalEndDate: string | null;
+  clinicDecision: boolean;
+  patientDecision: boolean;
+  price: number | null;
 };
 
 const supabase = createClient();
 
 const tabs = [
+  { id: 'overview' as const, label: 'Overview', icon: Building },
   { id: 'profile' as const, label: 'Clinic Profile', icon: Building },
   { id: 'doctors' as const, label: 'Doctors', icon: Users },
   { id: 'procedures' as const, label: 'Procedures', icon: Stethoscope },
@@ -53,7 +61,7 @@ const tabs = [
 ];
 
 export default function ClinicDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('profile');
+  const [activeTab, setActiveTab] = useState<Tab>('overview');
   const [clinic, setClinic] = useState<ClinicRecord | null>(null);
   const [procedures, setProcedures] = useState<ClinicProcedureRecord[]>([]);
   const [medicalProcedures, setMedicalProcedures] = useState<MedicalProcedureOption[]>([]);
@@ -79,7 +87,7 @@ export default function ClinicDashboard() {
 
       const [{ data: procedureRows, error: procedureError }, { data: requestRows, error: requestError }, { data: medicalProcedureRows, error: procedureCatalogError }] = await Promise.all([
         supabase.from('clinic_procedures').select('id, procedure_id, starting_price').eq('clinic_id', clinicRow.id),
-        supabase.from('Patient_request').select('id, created_at, id_patient, id_clinic, start_date, end_date').eq('id_clinic', clinicRow.id).order('created_at', { ascending: false }),
+        supabase.from('Patient_request').select('id, created_at, id_patient, id_clinic, procedure, start_date, end_date, final_start_date, final_end_date, clinic_decision, patient_decision, price').eq('id_clinic', clinicRow.id).order('created_at', { ascending: false }),
         supabase.from('medical_procedure').select('id, name').order('name'),
       ]);
       if (procedureError) console.error('Failed to load clinic procedures:', procedureError);
@@ -106,8 +114,14 @@ export default function ClinicDashboard() {
       setBookings((requestRows || []).map((request) => ({
         id: String(request.id),
         patientName: patientNames.get(String(request.id_patient)) || 'Patient',
+        procedure: request.procedure || null,
         startDate: request.start_date,
         endDate: request.end_date,
+        finalStartDate: request.final_start_date || null,
+        finalEndDate: request.final_end_date || null,
+        clinicDecision: request.clinic_decision ?? false,
+        patientDecision: request.patient_decision ?? false,
+        price: request.price !== null && request.price !== undefined ? Number(request.price) : null,
       })));
     };
 
@@ -178,6 +192,7 @@ export default function ClinicDashboard() {
           <div className="min-w-0 flex-1">
             {loading && <p className="text-muted-foreground">Loading your clinic data...</p>}
             {!loading && error && <p role="alert" className="text-destructive">{error}</p>}
+            {!loading && !error && activeTab === 'overview' && clinic && <ClinicOverview clinicName={clinic.clinic_name} bookings={bookings} onNavigate={setActiveTab} />}
             {!loading && !error && activeTab === 'profile' && clinic && <ClinicProfile clinic={clinic} onSave={updateClinic} />}
             {activeTab === 'doctors' && <ClinicDoctors />}
             {!loading && !error && activeTab === 'procedures' && <ClinicProcedures procedures={procedures} procedureOptions={medicalProcedures} onAddProcedure={addProcedure} />}
