@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Plane, X } from "lucide-react";
 
 export default function Banner() {
@@ -14,10 +15,13 @@ export default function Banner() {
 
       <span className="text-center">
         Medical tourism made simple — compare clinics, book procedures, and
-        travel with confidence.
-        <span className="ml-2 cursor-pointer underline underline-offset-2 opacity-90">
+        travel with confidence.{" "}
+        <Link 
+          href="/about" 
+          className="ml-1 cursor-pointer underline underline-offset-2 opacity-90 transition-opacity hover:opacity-100 font-medium"
+        >
           Learn more
-        </span>
+        </Link>
       </span>
 
       <button

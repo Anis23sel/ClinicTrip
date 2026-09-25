@@ -46,15 +46,21 @@ export default function ClinicResultCard({
               {clinic.name}
             </h3>
 
-            <div className="flex items-center gap-1 bg-yellow-50 px-2 py-1 rounded-lg shrink-0">
+            <div className="flex items-center gap-1.5 bg-yellow-50 px-2.5 py-1 rounded-lg shrink-0 border border-yellow-100">
               <Star
                 size={14}
                 className="fill-yellow-400 text-yellow-400"
               />
 
-              <span className="font-semibold text-sm">
-                {clinic.rating ?? "Not rated"}
+              <span className="font-semibold text-sm text-foreground">
+                {clinic.rating ? clinic.rating.toFixed(1) : "Not rated"}
               </span>
+
+              {clinic.reviewCount !== undefined && clinic.reviewCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  ({clinic.reviewCount})
+                </span>
+              )}
             </div>
           </div>
 

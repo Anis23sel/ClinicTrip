@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, Suspense, useMemo } from "react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors } from "lucide-react";
 import { useSearchParams } from "next/navigation";
-import { Search, SlidersHorizontal, Star, X } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
 import SearchLocationSelector from "../components/search/SearchLocationSelector";
@@ -38,7 +38,7 @@ function SearchContent() {
       setLoading(true);
       setLoadError("");
 
-      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult] = await Promise.all([
+      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult, reviewsResult] = await Promise.all([
         supabase.from("clinics").select("id, clinic_name, country, city_id"),
         supabase.from("cities").select("id, city"),
         supabase.from("medical_procedure").select("id, name, category_id"),
@@ -48,6 +48,7 @@ function SearchContent() {
         supabase.from("doctors").select("id, first_name, last_name, speciality_id, clinic_id"),
         supabase.from("specialities").select("id, name"),
         supabase.from("doctors_procedures").select("doctor_id, procedure_id"),
+        supabase.from("reviews").select("clinic_id, rating"),
       ]);
 
       const queryError = [
@@ -60,6 +61,7 @@ function SearchContent() {
         doctorsResult.error,
         specialitiesResult.error,
         doctorProceduresResult.error,
+        reviewsResult.error,
       ].find(Boolean);
 
       if (queryError) {
@@ -117,6 +119,16 @@ function SearchContent() {
         doctorsByClinic.set(String(doctor.clinic_id), clinicDoctors);
       }
 
+      const reviewRows = (reviewsResult.data || []) as { clinic_id: string | number; rating: number }[];
+      const reviewsByClinic = new Map<string, number[]>();
+
+      for (const review of reviewRows) {
+        const clinicId = String(review.clinic_id);
+        const ratings = reviewsByClinic.get(clinicId) || [];
+        ratings.push(review.rating);
+        reviewsByClinic.set(clinicId, ratings);
+      }
+
       const clinicResultsData = clinicRows.map((clinic): ClinicResult => {
         const clinicProcedures = clinicProceduresByClinic.get(String(clinic.id)) || [];
         const procedureNames = clinicProcedures.flatMap((clinicProcedure) => {
@@ -127,15 +139,25 @@ function SearchContent() {
           .map((clinicProcedure) => Number(clinicProcedure.starting_price))
           .filter((price) => Number.isFinite(price));
 
+        // Calculate average rating
+        const clinicRatings = reviewsByClinic.get(String(clinic.id)) || [];
+        const reviewCount = clinicRatings.length;
+        let rating: number | null = null;
+        if (reviewCount > 0) {
+          const sum = clinicRatings.reduce((acc, r) => acc + r, 0);
+          rating = Number((sum / reviewCount).toFixed(1));
+        }
+
         return {
           id: clinic.id,
           name: clinic.clinic_name,
           city: cityById.get(String(clinic.city_id)) || "",
           country: clinic.country || "",
-          rating: null,
           procedures: [...new Set(procedureNames)],
           doctors: doctorsByClinic.get(String(clinic.id)) || [],
           startingPrice: prices.length ? Math.min(...prices) : 0,
+          rating: rating,
+          reviewCount: reviewCount,
         };
       });
 
@@ -315,17 +337,22 @@ function SearchContent() {
                     <label className="block mb-2 text-sm font-semibold">Category</label>
                     <div className="grid grid-cols-2 gap-2">
                       {[
-                        { value: "", label: "All" },
-                        { value: "plastic-surgery", label: "Plastic" },
-                        { value: "dental", label: "Dental" },
-                        { value: "hair-transplant", label: "Hair" },
-                      ].map(({ value, label }) => (
+                        { value: "", label: "All", icon: LayoutGrid },
+                        { value: "plastic-surgery", label: "Plastic", icon: Sparkles },
+                        { value: "dental", label: "Dental", icon: Smile },
+                        { value: "hair-transplant", label: "Hair", icon: Scissors },
+                      ].map(({ value, label, icon: Icon }) => (
                         <button
                           key={value}
                           onClick={() => setFilters((current) => ({ ...current, category: value, surgeryTypes: [] }))}
-                          className={`py-2 px-3 rounded-lg border-2 text-sm transition-all ${filters.category === value ? "border-primary bg-primary/10 text-primary font-medium" : "border-border hover:border-primary/40"}`}
+                          className={`py-2 px-3 rounded-lg border-2 text-sm flex items-center justify-center gap-2 transition-all ${
+                            filters.category === value 
+                              ? "border-primary bg-primary/10 text-primary font-medium" 
+                              : "border-border hover:border-primary/40 text-foreground"
+                          }`}
                         >
-                          {label}
+                          <Icon size={16} />
+                          <span>{label}</span>
                         </button>
                       ))}
                     </div>

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 const popularProcedures = [
   {
@@ -7,6 +8,7 @@ const popularProcedures = [
     slug: "plastic-surgery",
     description:
       "Rhinoplasty, breast augmentation, liposuction, and more",
+    image: "/plastic-surgery.png",
   },
   {
     id: 2,
@@ -14,6 +16,7 @@ const popularProcedures = [
     slug: "dental",
     description:
       "Implants, veneers, whitening, and full smile makeovers",
+    image: "/dental-procedures.png",
   },
   {
     id: 3,
@@ -21,6 +24,7 @@ const popularProcedures = [
     slug: "hair-transplant",
     description:
       "Advanced FUE and DHI hair restoration techniques",
+    image: "/hair-transplant.png",
   },
 ];
 
@@ -39,7 +43,15 @@ export default function PopularProcedures() {
               href={`/search?category=${procedure.slug}`}
               className="group overflow-hidden rounded-lg bg-background shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="aspect-video bg-gradient-to-br from-primary/20 to-primary/10" />
+              <div className="relative aspect-video w-full overflow-hidden bg-muted">
+                <Image
+                  src={procedure.image}
+                  alt={procedure.name}
+                  fill
+                  sizes="(max-width: 768px) 100vw, 33vw"
+                  className="object-cover transition-transform duration-300 group-hover:scale-105"
+                />
+              </div>
 
               <div className="p-6">
                 <h3 className="mb-2 text-xl font-semibold transition-colors group-hover:text-primary">
