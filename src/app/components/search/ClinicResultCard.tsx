@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { DollarSign, MapPin, Star } from "lucide-react";
+import { Camera, DollarSign, MapPin, Star } from "lucide-react";
 import type { ClinicResult } from "./searchTypes";
 
 interface ClinicResultCardProps {
@@ -37,7 +37,23 @@ export default function ClinicResultCard({
       className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
     >
       <div className="flex flex-col md:flex-row">
-        <div className="md:w-72 h-44 md:h-auto bg-gradient-to-br from-primary/20 to-primary/10 shrink-0" />
+        <div className="relative h-44 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/10 md:w-72">
+          {clinic.images.length > 0 ? (
+            <img
+              src={clinic.images[0].publicUrl}
+              alt={clinic.images[0].caption || `${clinic.name} clinic`}
+              className="absolute inset-0 block h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full" aria-hidden="true" />
+          )}
+          {clinic.images.length > 0 && (
+            <span className="absolute bottom-3 left-3 flex items-center gap-1 rounded-full bg-black/70 px-2.5 py-1 text-xs font-medium text-white">
+              <Camera size={13} />
+              {clinic.images.length} {clinic.images.length === 1 ? "photo" : "photos"}
+            </span>
+          )}
+        </div>
 
         <div className="flex-1 p-6">
           {/* Clinic name + rating */}

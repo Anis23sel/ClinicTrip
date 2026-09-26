@@ -7,7 +7,7 @@ import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
 import SearchLocationSelector from "../components/search/SearchLocationSelector";
 import SearchProcedureFilter from "../components/search/SearchProcedureFilter";
 import ClinicResultCard from "../components/search/ClinicResultCard";
-import { getBodyPartProcedures, getProcedureCategory, normalizeText, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type DateRange, type DoctorResult, type Surgery } from "../components/search/searchTypes";
+import { getBodyPartProcedures, getProcedureCategory, normalizeText, type ClinicImageResult, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicImage, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type DateRange, type DoctorResult, type Surgery } from "../components/search/searchTypes";
 
 const supabase = createClient();
 
@@ -38,7 +38,7 @@ function SearchContent() {
       setLoading(true);
       setLoadError("");
 
-      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult] = await Promise.all([
+      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult, clinicImagesResult] = await Promise.all([
         supabase.from("clinics").select("id, clinic_name, country, city_id"),
         supabase.from("cities").select("id, city"),
         supabase.from("medical_procedure").select("id, name, category_id"),
@@ -48,6 +48,7 @@ function SearchContent() {
         supabase.from("doctors").select("id, first_name, last_name, speciality_id, clinic_id"),
         supabase.from("specialities").select("id, name"),
         supabase.from("doctors_procedures").select("doctor_id, procedure_id"),
+        supabase.from("clinic_images").select("id, clinic_id, storage_path, caption, display_order, created_at").order("display_order", { ascending: true }).order("created_at", { ascending: true }),
       ]);
 
       const queryError = [
@@ -60,6 +61,7 @@ function SearchContent() {
         doctorsResult.error,
         specialitiesResult.error,
         doctorProceduresResult.error,
+        clinicImagesResult.error,
       ].find(Boolean);
 
       if (queryError) {
@@ -78,6 +80,7 @@ function SearchContent() {
       const doctorRows = (doctorsResult.data || []) as DatabaseDoctor[];
       const specialityRows = (specialitiesResult.data || []) as DatabaseSpeciality[];
       const doctorProcedureRows = (doctorProceduresResult.data || []) as DatabaseDoctorProcedure[];
+      const clinicImageRows = (clinicImagesResult.data || []) as DatabaseClinicImage[];
       const cityById = new Map(cityRows.map((row) => [String(row.id), row.city]));
       const procedureById = new Map(procedureRows.map((row) => [String(row.id), row]));
       const categoryById = new Map(categoryRows.map((row) => [String(row.id), row]));
@@ -85,6 +88,20 @@ function SearchContent() {
       const specialityById = new Map(specialityRows.map((row) => [String(row.id), row.name]));
       const doctorProceduresByDoctor = new Map<string, DatabaseDoctorProcedure[]>();
       const clinicProceduresByClinic = new Map<string, DatabaseClinicProcedure[]>();
+      const clinicImagesByClinic = new Map<string, ClinicImageResult[]>();
+
+      for (const image of clinicImageRows) {
+        const images = clinicImagesByClinic.get(String(image.clinic_id)) || [];
+        images.push({
+          id: image.id,
+          storage_path: image.storage_path,
+          caption: image.caption,
+          display_order: image.display_order,
+          created_at: image.created_at,
+          publicUrl: supabase.storage.from("clinic-images").getPublicUrl(image.storage_path).data.publicUrl,
+        });
+        clinicImagesByClinic.set(String(image.clinic_id), images);
+      }
 
       for (const doctorProcedure of doctorProcedureRows) {
         const doctorId = String(doctorProcedure.doctor_id);
@@ -132,6 +149,7 @@ function SearchContent() {
           name: clinic.clinic_name,
           city: cityById.get(String(clinic.city_id)) || "",
           country: clinic.country || "",
+          images: clinicImagesByClinic.get(String(clinic.id)) || [],
           rating: null,
           procedures: [...new Set(procedureNames)],
           doctors: doctorsByClinic.get(String(clinic.id)) || [],

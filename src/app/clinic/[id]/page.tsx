@@ -7,6 +7,7 @@ import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
+import ClinicGallery, { type ClinicGalleryImage } from "@/app/components/clinic/ClinicGallery";
 
 type BookingTab = "clinic" | "accommodation" | "transfer";
 
@@ -33,6 +34,7 @@ type ClinicData = {
   description: string | null;
   procedures: ClinicProcedure[];
   doctors: ClinicDoctor[];
+  images: ClinicGalleryImage[];
 };
 
 export default function ClinicPage() {
@@ -171,6 +173,23 @@ export default function ClinicPage() {
         throw cityError;
       }
 
+      const { data: clinicImageRows, error: clinicImagesError } = await supabase
+        .from("clinic_images")
+        .select("id, storage_path, caption, display_order, created_at")
+        .eq("clinic_id", id)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: true });
+
+      if (clinicImagesError) {
+        console.error("Failed to load clinic images:", clinicImagesError);
+      }
+
+      const clinicImages: ClinicGalleryImage[] = (clinicImageRows || []).map((image) => ({
+        id: String(image.id),
+        caption: image.caption,
+        publicUrl: supabase.storage.from("clinic-images").getPublicUrl(image.storage_path).data.publicUrl,
+      }));
+
       /*
        * 3. Load ALL procedures offered by this clinic
        */
@@ -307,6 +326,7 @@ export default function ClinicPage() {
         description: null,
         procedures,
         doctors,
+        images: clinicImages,
       });
     };
 
@@ -567,6 +587,8 @@ export default function ClinicPage() {
                       </p>
 
                     </div>
+
+                    <ClinicGallery images={clinic.images} />
 
                     {/* PROCEDURES */}
 

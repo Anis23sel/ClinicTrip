@@ -6,6 +6,7 @@ import InquirySuccess from "./InquirySuccess";
 import { createClient } from "@/app/utils/supabase/client";
 
 const supabase = createClient();
+const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024;
 
 interface BookingInquiryModalProps {
   isOpen: boolean;
@@ -52,6 +53,7 @@ export default function BookingInquiryModal({
 }: BookingInquiryModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
     name: "",
@@ -74,6 +76,7 @@ export default function BookingInquiryModal({
 
     setSubmitted(false);
     setError("");
+    setAttachmentFile(null);
     setForm((prev) => ({ ...prev, name: "", email: "" }));
 
     if (!isOpen) return;
@@ -125,16 +128,26 @@ export default function BookingInquiryModal({
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    if (attachmentFile && attachmentFile.size > MAX_DOCUMENT_SIZE) {
+      setError("The document must be 2 MB or smaller.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("clinicId", clinicId);
+    if (requestId) formData.append("requestId", requestId);
+    formData.append("name", hideContactInformation(form.name));
+    formData.append("email", form.email);
+    formData.append("procedure", form.procedure);
+    formData.append("startDate", form.startDate);
+    formData.append("endDate", form.endDate);
+    formData.append("details", hideContactInformation(form.details));
+    if (attachmentFile) formData.append("document", attachmentFile);
+
     const response = await fetch("/api/booking-inquiry", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-  clinicId,
-  requestId,
-  ...form,
-  name: hideContactInformation(form.name),
-  details: hideContactInformation(form.details),
-}),
+      body: formData,
     });
 
     if (!response.ok) {
@@ -292,6 +305,31 @@ export default function BookingInquiryModal({
                 placeholder="Any questions, medical history details, or special requests..."
                 className="w-full resize-none rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
               />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">
+                Supporting Document <span className="font-normal text-muted-foreground">(optional)</span>
+              </label>
+              <input
+                type="file"
+                accept="application/pdf,image/jpeg,.pdf,.jpg,.jpeg"
+                onChange={(e) => {
+                  const selectedFile = e.target.files?.[0] || null;
+                  if (selectedFile && selectedFile.size > MAX_DOCUMENT_SIZE) {
+                    setAttachmentFile(null);
+                    e.target.value = "";
+                    setError("The document must be 2 MB or smaller.");
+                    return;
+                  }
+                  setError("");
+                  setAttachmentFile(selectedFile);
+                }}
+                className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                PDF or JPEG only, maximum 2 MB.
+              </p>
             </div>
 
             <p className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground">

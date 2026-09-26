@@ -17,10 +17,29 @@ export interface ClinicResult {
   name: string;
   city: string;
   country: string;
+  images: ClinicImageResult[];
   rating: number | null;
   procedures: string[];
   doctors: DoctorResult[];
   startingPrice: number;
+}
+
+export interface ClinicImageResult {
+  id: string | number;
+  storage_path: string;
+  caption: string | null;
+  display_order: number;
+  created_at: string;
+  publicUrl: string;
+}
+
+export interface DatabaseClinicImage {
+  id: string | number;
+  clinic_id: string | number;
+  storage_path: string;
+  caption: string | null;
+  display_order: number;
+  created_at: string;
 }
 
 export interface DatabaseClinic {

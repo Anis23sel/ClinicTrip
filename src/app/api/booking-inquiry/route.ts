@@ -3,6 +3,17 @@ import { cookies } from "next/headers";
 import nodemailer from "nodemailer";
 import { createClient } from "@/app/utils/supabase/server";
 
+const MAX_DOCUMENT_SIZE = 2 * 1024 * 1024;
+const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf", "image/jpeg"]);
+
+function isPdf(bytes: Uint8Array) {
+  return new TextDecoder().decode(bytes.slice(0, 5)) === "%PDF-";
+}
+
+function isJpeg(bytes: Uint8Array) {
+  return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+}
+
 async function getAuthenticatedUser(
   supabase: ReturnType<typeof createClient>
 ) {
@@ -154,37 +165,68 @@ export async function POST(request: Request) {
     // 2. Read body
     // --------------------------------------------------
 
-    const body = await request.json();
+    const body = await request.formData();
 
-    const clinicId =
-      typeof body.clinicId === "string"
-        ? body.clinicId.trim()
-        : "";
+    const getTextField = (field: string) => {
+      const value = body.get(field);
+      return typeof value === "string" ? value : "";
+    };
 
-    const requestId =
-      typeof body.requestId === "string"
-        ? body.requestId.trim()
-        : "";
+    const clinicId = getTextField("clinicId").trim();
 
-    const procedure =
-      typeof body.procedure === "string"
-        ? body.procedure.trim()
-        : "";
+    const requestId = getTextField("requestId").trim();
 
-    const startDate =
-      typeof body.startDate === "string" &&
-      body.startDate.trim()
-        ? body.startDate.trim()
-        : null;
+    const procedure = getTextField("procedure").trim();
 
-    const endDate =
-      typeof body.endDate === "string" &&
-      body.endDate.trim()
-        ? body.endDate.trim()
-        : null;
+    const startDateValue = getTextField("startDate").trim();
+    const startDate = startDateValue || null;
 
-    const details =
-      typeof body.details === "string" ? hideContactInformation(body.details.trim()) : "";
+    const endDateValue = getTextField("endDate").trim();
+    const endDate = endDateValue || null;
+
+    const details = hideContactInformation(getTextField("details").trim());
+    const uploadedDocument = body.get("document");
+    let documentAttachment:
+      | { filename: string; content: Buffer; contentType: string }
+      | undefined;
+
+    if (uploadedDocument instanceof File && uploadedDocument.size > 0) {
+      const fileName = uploadedDocument.name.toLowerCase();
+      const hasAllowedExtension =
+        fileName.endsWith(".pdf") ||
+        fileName.endsWith(".jpg") ||
+        fileName.endsWith(".jpeg");
+
+      if (
+        uploadedDocument.size > MAX_DOCUMENT_SIZE ||
+        !ALLOWED_DOCUMENT_TYPES.has(uploadedDocument.type) ||
+        !hasAllowedExtension
+      ) {
+        return NextResponse.json(
+          { error: "The document must be a PDF or JPEG no larger than 2 MB." },
+          { status: 400 }
+        );
+      }
+
+      const documentBuffer = Buffer.from(await uploadedDocument.arrayBuffer());
+      const hasValidSignature =
+        uploadedDocument.type === "application/pdf"
+          ? isPdf(documentBuffer)
+          : isJpeg(documentBuffer);
+
+      if (!hasValidSignature) {
+        return NextResponse.json(
+          { error: "The uploaded document is not a valid PDF or JPEG file." },
+          { status: 400 }
+        );
+      }
+
+      documentAttachment = {
+        filename: uploadedDocument.name,
+        content: documentBuffer,
+        contentType: uploadedDocument.type,
+      };
+    }
 
     // --------------------------------------------------
     // 3. Validate
@@ -400,6 +442,7 @@ export async function POST(request: Request) {
         to: clinic.email,
         subject: `New inquiry from ${hideContactInformation(patientName)}`,
         text: message,
+        attachments: documentAttachment ? [documentAttachment] : undefined,
       });
     } catch (emailError) {
       console.error(
