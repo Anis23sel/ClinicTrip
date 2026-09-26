@@ -1,10 +1,25 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Search } from "lucide-react";
 
 export default function Hero() {
   return (
-    <section className="relative bg-gradient-to-br from-primary to-primary/80 text-primary-foreground py-20 px-4">
-      <div className="max-w-7xl mx-auto">
+    <section className="relative overflow-hidden py-24 px-4 text-primary-foreground md:py-32">
+      {/* Hero Image */}
+      <div className="absolute inset-0 z-0">
+        <Image
+          src="/hero-background.png"
+          alt="Hero background"
+          fill
+          priority
+          className="object-cover"
+        />
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-primary/55" />
+      </div>
+
+      {/* Content */}
+      <div className="relative z-10 max-w-7xl mx-auto">
         <div className="max-w-3xl">
           <h1 className="mb-6 text-5xl font-bold md:text-6xl">
             Your medical journey starts here
@@ -17,7 +32,7 @@ export default function Hero() {
 
           <Link
             href="/search"
-            className="inline-flex items-center gap-2 rounded-lg bg-background px-8 py-4 text-foreground transition-opacity hover:opacity-90"
+            className="inline-flex items-center gap-2 rounded-lg bg-background px-8 py-4 text-foreground transition-opacity hover:opacity-90 shadow-lg"
           >
             <Search size={20} />
             Explore Clinics

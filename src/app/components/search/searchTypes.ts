@@ -19,6 +19,7 @@ export interface ClinicResult {
   country: string;
   images: ClinicImageResult[];
   rating: number | null;
+  reviewCount?: number;
   procedures: string[];
   doctors: DoctorResult[];
   startingPrice: number;

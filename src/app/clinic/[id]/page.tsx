@@ -7,7 +7,7 @@ import { createClient } from "@/app/utils/supabase/client";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
-import ClinicGallery, { type ClinicGalleryImage } from "@/app/components/clinic/ClinicGallery";
+import { Star } from "lucide-react";
 
 type BookingTab = "clinic" | "accommodation" | "transfer";
 
@@ -26,6 +26,14 @@ type ClinicDoctor = {
   procedures: string[];
 };
 
+type ClinicReview = {
+  id: string;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user_name?: string;
+};
+
 type ClinicData = {
   id: string;
   name: string;
@@ -34,7 +42,11 @@ type ClinicData = {
   description: string | null;
   procedures: ClinicProcedure[];
   doctors: ClinicDoctor[];
-  images: ClinicGalleryImage[];
+  reviews: ClinicReview[];
+  averageRating: number | null;
+  reviewCount: number;
+  isClinicUser?: boolean;
+  hasUserReviewed?: boolean;
 };
 
 export default function ClinicPage() {
@@ -242,6 +254,113 @@ export default function ClinicPage() {
             procedure !== null
         );
 
+       /*
+       * ==============
+       * LOAD REVIEWS 
+       * ==============
+       */
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      const { data: reviewRows, error: reviewError } = await supabase
+        .from("reviews")
+        .select("id, rating, comment, created_at, user_id")
+        .eq("clinic_id", id)
+        .order("created_at", { ascending: false });
+
+      if (reviewError) {
+        console.error("Failed to load reviews:", reviewError);
+      }
+
+      const patientsMap = new Map<string, { first_name: string; last_name: string }>();
+
+      if (reviewRows && reviewRows.length > 0) {
+        const reviewUserIds = [...new Set(reviewRows.map((r) => r.user_id).filter(Boolean))];
+
+        // Fetch profiles for the users who wrote reviews
+        const { data: profileRows } = await supabase
+          .from("profiles")
+          .select("id, user_id")
+          .in("user_id", reviewUserIds);
+
+        if (profileRows && profileRows.length > 0) {
+          const userToProfileIdMap = new Map<string, string>();
+          const profileIds: string[] = [];
+
+          profileRows.forEach((p) => {
+            if (p.user_id && p.id) {
+              userToProfileIdMap.set(p.user_id, p.id);
+              profileIds.push(p.id);
+            }
+          });
+
+          // Fetch patient details for the profiles
+          const { data: patientRows } = await supabase
+            .from("patients")
+            .select("profile_id, first_name, last_name")
+            .in("profile_id", profileIds);
+
+          if (patientRows && patientRows.length > 0) {
+            const profileToPatientMap = new Map<string, { first_name: string; last_name: string }>();
+            patientRows.forEach((pt) => {
+              if (pt.profile_id) {
+                profileToPatientMap.set(pt.profile_id, {
+                  first_name: pt.first_name,
+                  last_name: pt.last_name,
+                });
+              }
+            });
+
+            // Map user_id from reviews to patient info
+            reviewRows.forEach((rev) => {
+              if (rev.user_id) {
+                const profileId = userToProfileIdMap.get(rev.user_id);
+                if (profileId) {
+                  const patientInfo = profileToPatientMap.get(profileId);
+                  if (patientInfo) {
+                    patientsMap.set(rev.user_id, patientInfo);
+                  }
+                }
+              }
+            });
+          }
+        }
+      }
+
+      const reviews: ClinicReview[] = (reviewRows || []).map((rev) => {
+        const patient = patientsMap.get(String(rev.user_id));
+        const fullName = patient ? `${patient.first_name || ''} ${patient.last_name || ''}`.trim() : "";
+
+        return {
+          id: rev.id,
+          rating: rev.rating,
+          comment: rev.comment,
+          created_at: rev.created_at,
+          user_name: fullName || "Verified Patient",
+        };
+      });
+
+      // Determine if the current user is a clinic user
+      let isClinicUser = false;
+      if (user) {
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("role")
+          .eq("user_id", user.id)
+          .single();
+        
+        if (profileData && profileData.role === "clinic") {
+          isClinicUser = true;
+        }
+      }
+
+      const hasUserReviewed = user ? (reviewRows || []).some((rev) => rev.user_id === user.id) : false;
+
+      const reviewCount = reviews.length;
+      let averageRating: number | null = null;
+      if (reviewCount > 0) {
+        const sum = reviews.reduce((acc, r) => acc + r.rating, 0);
+        averageRating = Number((sum / reviewCount).toFixed(1));
+      }
       /*
        * ========================================================
        * INITIAL PROCEDURE SELECTION
@@ -326,7 +445,11 @@ export default function ClinicPage() {
         description: null,
         procedures,
         doctors,
-        images: clinicImages,
+        reviews,
+        averageRating,
+        reviewCount,
+        isClinicUser,
+        hasUserReviewed,
       });
     };
 
@@ -1213,8 +1336,239 @@ export default function ClinicPage() {
 
         </div>
 
+        {/* REVIEWS & COMMENTS SECTION */}
+        <div className="border-t border-border pt-6 mt-8 space-y-6">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold">
+              Patient Reviews & Comments ({clinic.reviewCount})
+            </h3>
+            {clinic.averageRating !== null && (
+              <div className="flex items-center gap-1 font-semibold text-foreground">
+                <span className="text-primary font-bold">★ {clinic.averageRating}</span> 
+                <span className="text-muted-foreground text-sm">/ 5</span>
+              </div>
+            )}
+          </div>
+
+          {/* Review List */}
+          <div className="space-y-4">
+            {clinic.reviews.length === 0 ? (
+              <p className="text-base text-muted-foreground">
+                No reviews yet. Be the first to share your experience!
+              </p>
+            ) : (
+              clinic.reviews.map((rev) => {
+                const initials = rev.user_name && rev.user_name !== "Verified Patient"
+                  ? rev.user_name.split(" ").map(n => n[0]).join("").toUpperCase().substring(0, 2)
+                  : "P";
+
+                return (
+                  <div key={rev.id} className="border border-border rounded-xl p-5 bg-card/50 space-y-3">
+                    <div className="flex items-center justify-between">
+                      
+                      {/* Avatar + Name + Ratings */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                          {initials}
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-foreground text-sm">{rev.user_name}</h4>
+                          <div className="flex items-center gap-1.5 mt-0.5">
+                            <div className="flex items-center gap-0.5">
+                              {Array.from({ length: 5 }).map((_, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-sm ${
+                                    i < rev.rating ? "text-yellow-400" : "text-muted-foreground/30"
+                                  }`}
+                                >
+                                  ★
+                                </span>
+                              ))}
+                            </div>
+                            <span className="text-xs font-semibold text-foreground">
+                              ({rev.rating}/5)
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <span className="text-sm text-muted-foreground">
+                        {new Date(rev.created_at).toLocaleDateString()}
+                      </span>
+                    </div>
+
+                    {rev.comment && (
+                      <p className="text-base text-muted-foreground leading-relaxed pl-13">
+                        {rev.comment}
+                      </p>
+                    )}
+                  </div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Message if user has already reviewed or is a clinic */}
+          {clinic.isClinicUser ? (
+            <div className="border border-border bg-muted/50 rounded-xl p-5 text-center">
+              <p className="text-sm text-muted-foreground">Reviews are written by verified patients who have experienced care at our partner clinics.</p>
+            </div>
+          ) : clinic.hasUserReviewed ? (
+            <div className="border border-primary/20 bg-primary/5 rounded-xl p-5 text-center space-y-1.5">
+              <p className="text-base font-semibold text-primary">You have already reviewed this clinic.</p>
+              <p className="text-sm text-muted-foreground">Thank you for helping the community with your feedback!</p>
+            </div>
+          ) : (
+            <ReviewForm 
+              clinicId={clinic.id} 
+              onReviewAdded={(newReview) => {
+                setClinic((prev) => {
+                  if (!prev) return null;
+                  const updatedReviews = [newReview, ...prev.reviews];
+                  const newCount = updatedReviews.length;
+                  const newSum = updatedReviews.reduce((acc, r) => acc + r.rating, 0);
+                  const newAverage = Number((newSum / newCount).toFixed(1));
+
+                  return {
+                    ...prev,
+                    reviews: updatedReviews,
+                    reviewCount: newCount,
+                    averageRating: newAverage,
+                    hasUserReviewed: true,
+                  };
+                });
+              }} 
+            />
+          )}
+        </div>
       </div>
 
     </div>
+  );
+}
+
+function ReviewForm({ clinicId, onReviewAdded }: { clinicId: string; onReviewAdded: (newReview: ClinicReview) => void }) {
+  const [rating, setRating] = useState(0);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [comment, setComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [supabase] = useState(() => createClient());
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (rating === 0) {
+      alert("Please select a star rating before submitting.");
+      return;
+    }
+
+    setSubmitting(true);
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Please log in to leave a review.");
+      setSubmitting(false);
+      return;
+    }
+
+    // Fetch the user's profile to get their name
+    const { data: profileData } = await supabase
+      .from("profiles")
+      .select("id")
+      .eq("user_id", user.id)
+      .single();
+
+    let userName = "Verified Patient";
+    if (profileData) {
+      const { data: patientData } = await supabase
+        .from("patients")
+        .select("first_name, last_name")
+        .eq("profile_id", profileData.id)
+        .single();
+      
+      if (patientData) {
+        userName = `${patientData.first_name || ''} ${patientData.last_name || ''}`.trim() || "Verified Patient";
+      }
+    }
+
+    // Insert the review into the db
+    const { data: insertedReview, error } = await supabase.from("reviews").insert({
+      clinic_id: clinicId,
+      user_id: user.id,
+      rating,
+      comment,
+    }).select().single();
+
+    setSubmitting(false);
+
+    if (error) {
+      alert(error.message);
+    } else {
+      // Create a new review object to pass back to the parent component
+      const newReview: ClinicReview = {
+        id: insertedReview?.id || Date.now().toString(),
+        rating,
+        comment,
+        created_at: new Date().toISOString(),
+        user_name: userName,
+      };
+
+      setComment("");
+      setRating(0);
+      onReviewAdded(newReview);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="border border-border rounded-xl p-4 space-y-4 bg-background">
+      <h4 className="font-semibold text-sm">Leave your review</h4>
+      
+      <div>
+        <label className="block text-xs text-muted-foreground mb-1.5">Rating</label>
+        <div className="flex items-center gap-1">
+          {[1, 2, 3, 4, 5].map((star) => (
+            <button
+              key={star}
+              type="button"
+              className="p-1 focus:outline-none transition-transform hover:scale-110"
+              onClick={() => setRating(star)}
+              onMouseEnter={() => setHoverRating(star)}
+              onMouseLeave={() => setHoverRating(0)}
+            >
+              <Star
+                className={`w-6 h-6 transition-colors ${
+                  (hoverRating || rating) >= star
+                    ? "fill-yellow-400 text-yellow-400"
+                    : "text-muted-foreground/30"
+                }`}
+              />
+            </button>
+          ))}
+          <span className="ml-2 text-sm font-medium text-muted-foreground">
+            {rating > 0 ? `(${rating}/5)` : "(Select rating)"}
+          </span>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs text-muted-foreground mb-1">Comment</label>
+        <textarea
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          placeholder="Share your experience..."
+          className="w-full border border-border rounded-lg p-2 text-sm bg-input-background"
+          rows={3}
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={submitting}
+        className="bg-primary text-primary-foreground px-4 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
+      >
+        {submitting ? "Submitting..." : "Submit Review"}
+      </button>
+    </form>
   );
 }

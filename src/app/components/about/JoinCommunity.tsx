@@ -1,6 +1,17 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
+import { createClient } from "@/app/utils/supabase/server";
 
-export default function JoinCommunity() {
+export default async function JoinCommunity() {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  
+  const { data: { session } } = await supabase.auth.getSession();
+
+  if (session) {
+    return null;
+  }
+
   return (
     <section className="px-4 pb-16">
       <div className="mx-auto max-w-7xl">
@@ -10,8 +21,8 @@ export default function JoinCommunity() {
           </h2>
 
           <p className="mx-auto mb-8 max-w-2xl text-xl text-primary-foreground/90">
-            Whether you're a patient seeking quality care or a clinic looking
-            to reach international patients, we're here to help.
+            Whether you&apos;re a patient seeking quality care or a clinic looking
+            to reach international patients, we&apos;re here to help.
           </p>
 
           <div className="flex flex-col justify-center gap-4 sm:flex-row">
