@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { MapPin, Plane, Car } from "lucide-react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
+import ClinicGallery, { type ClinicGalleryImage } from "@/app/components/clinic/ClinicGallery";
 import { DayPicker, DateRange } from "react-day-picker";
 import "react-day-picker/style.css";
 import { format } from "date-fns";
@@ -40,6 +41,7 @@ type ClinicData = {
   city: string;
   country: string;
   description: string | null;
+  images: ClinicGalleryImage[];
   procedures: ClinicProcedure[];
   doctors: ClinicDoctor[];
   reviews: ClinicReview[];
@@ -443,6 +445,7 @@ export default function ClinicPage() {
         city: cityRow?.city || "",
         country: clinicRow.country || "",
         description: null,
+        images: clinicImages,
         procedures,
         doctors,
         reviews,

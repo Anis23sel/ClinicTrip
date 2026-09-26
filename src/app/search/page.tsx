@@ -38,7 +38,7 @@ function SearchContent() {
       setLoading(true);
       setLoadError("");
 
-      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult, clinicImagesResult] = await Promise.all([
+      const [clinicsResult, citiesResult, proceduresResult, categoriesResult, domainsResult, clinicProceduresResult, doctorsResult, specialitiesResult, doctorProceduresResult, clinicImagesResult, reviewsResult] = await Promise.all([
         supabase.from("clinics").select("id, clinic_name, country, city_id"),
         supabase.from("cities").select("id, city"),
         supabase.from("medical_procedure").select("id, name, category_id"),
@@ -49,6 +49,7 @@ function SearchContent() {
         supabase.from("specialities").select("id, name"),
         supabase.from("doctors_procedures").select("doctor_id, procedure_id"),
         supabase.from("clinic_images").select("id, clinic_id, storage_path, caption, display_order, created_at").order("display_order", { ascending: true }).order("created_at", { ascending: true }),
+        supabase.from("reviews").select("clinic_id, rating"),
       ]);
 
       const queryError = [
@@ -62,6 +63,7 @@ function SearchContent() {
         specialitiesResult.error,
         doctorProceduresResult.error,
         clinicImagesResult.error,
+        reviewsResult.error,
       ].find(Boolean);
 
       if (queryError) {
@@ -169,11 +171,10 @@ function SearchContent() {
           city: cityById.get(String(clinic.city_id)) || "",
           country: clinic.country || "",
           images: clinicImagesByClinic.get(String(clinic.id)) || [],
-          rating: null,
+          rating: rating,
           procedures: [...new Set(procedureNames)],
           doctors: doctorsByClinic.get(String(clinic.id)) || [],
           startingPrice: prices.length ? Math.min(...prices) : 0,
-          rating: rating,
           reviewCount: reviewCount,
         };
       });
