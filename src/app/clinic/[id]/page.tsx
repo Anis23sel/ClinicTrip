@@ -574,10 +574,72 @@ export default function ClinicPage() {
    * ============================================================
    */
 
+ /*
+   * ============================================================
+   * LOADING (PROFESSIONAL SKELETON LOADER)
+   * ============================================================
+   */
+
   if (loading) {
     return (
-      <div className="p-8">
-        Loading clinic...
+      <div className="min-h-screen bg-background">
+        {/* Hero Skeleton */}
+        <div className="bg-gradient-to-br from-primary/80 to-primary/60 text-primary-foreground py-12 px-4 animate-pulse">
+          <div className="max-w-7xl mx-auto space-y-3">
+            <div className="h-10 bg-primary-foreground/20 rounded-lg w-1/3"></div>
+            <div className="h-5 bg-primary-foreground/20 rounded-lg w-1/4"></div>
+          </div>
+        </div>
+
+        {/* Main Content Skeleton */}
+        <div className="max-w-7xl mx-auto px-4 py-8">
+          <div className="grid lg:grid-cols-3 gap-8">
+            
+            {/* Left Column Skeleton */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-card rounded-xl border border-border p-6 space-y-6">
+                
+                {/* Tabs Skeleton */}
+                <div className="flex gap-4 border-b border-border pb-4">
+                  <div className="h-8 bg-muted rounded-lg flex-1 animate-pulse"></div>
+                  <div className="h-8 bg-muted rounded-lg flex-1 animate-pulse"></div>
+                  <div className="h-8 bg-muted rounded-lg flex-1 animate-pulse"></div>
+                </div>
+
+                {/* About Section Skeleton */}
+                <div className="space-y-3">
+                  <div className="h-6 bg-muted rounded-md w-1/4 animate-pulse"></div>
+                  <div className="h-4 bg-muted rounded-md w-full animate-pulse"></div>
+                  <div className="h-4 bg-muted rounded-md w-5/6 animate-pulse"></div>
+                </div>
+
+                {/* Gallery Image Skeleton */}
+                <div className="h-64 bg-muted rounded-xl w-full animate-pulse"></div>
+
+                {/* Procedures Skeleton */}
+                <div className="space-y-4">
+                  <div className="h-6 bg-muted rounded-md w-1/3 animate-pulse"></div>
+                  <div className="grid gap-3">
+                    <div className="h-24 bg-muted/50 border border-border rounded-xl animate-pulse"></div>
+                    <div className="h-24 bg-muted/50 border border-border rounded-xl animate-pulse"></div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Right Column / Sidebar Skeleton */}
+            <div className="lg:col-span-1">
+              <div className="bg-card rounded-xl border border-border p-6 space-y-6 sticky top-8">
+                <div className="h-6 bg-muted rounded-md w-1/2 animate-pulse"></div>
+                <div className="h-12 bg-muted rounded-xl w-full animate-pulse"></div>
+                <div className="h-40 bg-muted/50 rounded-xl w-full animate-pulse"></div>
+                <div className="h-10 bg-primary/20 rounded-xl w-full animate-pulse"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
     );
   }

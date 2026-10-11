@@ -1,4 +1,5 @@
 "use client";
+
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors } from "lucide-react";
 import { useSearchParams } from "next/navigation";
@@ -156,7 +157,6 @@ function SearchContent() {
           .map((clinicProcedure) => Number(clinicProcedure.starting_price))
           .filter((price) => Number.isFinite(price));
 
-        // Calculate average rating
         const clinicRatings = reviewsByClinic.get(String(clinic.id)) || [];
         const reviewCount = clinicRatings.length;
         let rating: number | null = null;
@@ -413,11 +413,6 @@ function SearchContent() {
                       )}
                     </div>
                   </div>
- 
-                  {/* <div>
-                    <label className="block mb-3 text-sm font-semibold">Select Body Part</label>
-                    <BodyPartSelector onSelectBodyPart={(part) => setSelectedBodyPart(part)} selectedPart={selectedBodyPart} />
-                  </div> */}
                 </div>
               </div>
             </aside>
@@ -458,8 +453,26 @@ function SearchContent() {
 
             <div className="grid gap-5">
               {loading ? (
-                <div className="bg-card rounded-xl border border-border p-10 text-center text-muted-foreground">
-                  Loading clinics...
+                // PROFESSIONAL SKELETON LOADER FOR CLINICS
+                <div className="space-y-4">
+                  {[1, 2, 3].map((item) => (
+                    <div key={item} className="bg-card rounded-xl border border-border p-6 flex flex-col md:flex-row gap-6 animate-pulse">
+                      <div className="w-full md:w-72 h-48 bg-muted rounded-lg flex-shrink-0"></div>
+                      <div className="flex-1 space-y-4 py-1">
+                        <div className="h-6 bg-muted rounded-md w-3/4"></div>
+                        <div className="h-4 bg-muted rounded-md w-1/2"></div>
+                        <div className="flex gap-2 pt-2">
+                          <div className="h-6 bg-muted rounded-full w-20"></div>
+                          <div className="h-6 bg-muted rounded-full w-24"></div>
+                          <div className="h-6 bg-muted rounded-full w-16"></div>
+                        </div>
+                        <div className="flex justify-between items-center pt-4 border-t border-border">
+                          <div className="h-5 bg-muted rounded-md w-28"></div>
+                          <div className="h-10 bg-muted rounded-lg w-32"></div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : loadError ? (
                 <div role="alert" className="bg-card rounded-xl border border-border p-10 text-center text-destructive">
@@ -471,26 +484,20 @@ function SearchContent() {
                 </div>
               ) : (
                 filteredClinics.map((clinic) => {
-                  const selectedProcedure = filters.surgeryTypes.find((selectedSurgery) =>
-                    clinic.procedures.some((procedure) =>
-                      normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
-                      normalizeText(selectedSurgery).includes(normalizeText(procedure))
-                    )
-                  );
-
                   return (
                     <ClinicResultCard
-  key={clinic.id}
-  clinic={clinic}
-  selectedProcedures={filters.surgeryTypes.filter((selectedSurgery) =>
-    clinic.procedures.some((procedure) =>
-      normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
-      normalizeText(selectedSurgery).includes(normalizeText(procedure))
-    )
-  )}
-/>
+                      key={clinic.id}
+                      clinic={clinic}
+                      selectedProcedures={filters.surgeryTypes.filter((selectedSurgery) =>
+                        clinic.procedures.some((procedure) =>
+                          normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
+                          normalizeText(selectedSurgery).includes(normalizeText(procedure))
+                        )
+                      )}
+                    />
                   );
-                }))}
+                })
+              )}
             </div>
           </div>
         </div>

@@ -73,26 +73,41 @@ export default function PatientBookingOverview() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-card p-5">
-        <div className="mb-5 flex items-center justify-between gap-4">
+      {/* HORIZONTAL TIMELINE */}
+      <div className="rounded-lg border border-border bg-card p-6">
+        <div className="mb-6 flex items-center justify-between gap-4">
           <div>
             <h3 className="font-semibold">Booking status</h3>
             <p className="mt-1 text-sm text-muted-foreground">Track each step before arrival.</p>
           </div>
           <Clock3 className="text-muted-foreground" size={21} />
         </div>
-        <div className="space-y-5">
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 relative">
           {timeline.map((step, index) => (
-            <div key={step.label} className="flex gap-3">
-              <div className="flex flex-col items-center">
-                <span className={`flex h-7 w-7 items-center justify-center rounded-full ${step.complete ? "bg-green-100 text-green-700" : "bg-accent text-muted-foreground"}`}>
-                  {step.complete ? <Check size={15} /> : <span className="h-2 w-2 rounded-full bg-current" />}
+            <div key={step.label} className="flex flex-col relative">
+              {/* HORIZONTAL LINE */}
+              {index < timeline.length - 1 && (
+                <div className="hidden sm:block absolute top-3.5 left-1/2 w-full h-0.5 bg-border z-0" />
+              )}
+
+              {/* STEPS*/}
+              <div className="flex items-center sm:justify-center mb-3 relative z-10">
+                <span
+                  className={`flex h-7 w-7 items-center justify-center rounded-full font-semibold text-xs ${
+                    step.complete
+                      ? "bg-green-100 text-green-700"
+                      : "bg-accent text-muted-foreground"
+                  }`}
+                >
+                  {step.complete ? <Check size={15} /> : index + 1}
                 </span>
-                {index < timeline.length - 1 && <span className="mt-1 h-full w-px bg-border" />}
               </div>
-              <div className="pb-1">
-                <p className="font-medium">{step.label}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{step.date}</p>
+
+              {/* STEP LABEL */}
+              <div className="sm:text-center">
+                <p className="font-medium text-sm">{step.label}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{step.date}</p>
               </div>
             </div>
           ))}

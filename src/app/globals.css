@@ -24,6 +24,15 @@
   /* Focus */
   --ring: #A85438;
 
+  /* Error & Success Feedback */
+  --error: #EF4444;
+  --error-foreground: #991B1B;
+  --error-background: #FEF2F2;
+
+  --success: #22C55E;
+  --success-foreground: #166534;
+  --success-background: #F0FDF4;
+
   /* Colors */
   --soft-clay: #F2E3D5;
   --blush-terracotta: #E4B7A1;
@@ -54,6 +63,15 @@
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  --color-error: var(--error);
+  --color-error-foreground: var(--error-foreground);
+  --color-error-background: var(--error-background);
+
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-success-background: var(--success-background);
+  
 }
 
 body {

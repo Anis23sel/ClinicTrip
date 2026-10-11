@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Send, X } from "lucide-react";
+import { Send, X, AlertCircle } from "lucide-react";
 import InquirySuccess from "./InquirySuccess";
 import { createClient } from "@/app/utils/supabase/client";
 
@@ -21,7 +21,6 @@ interface BookingInquiryModalProps {
 }
 
 // function to hide contact information for the additonal field in the contact form
-
 function hideContactInformation(text: string) {
   let sanitized = text;
 
@@ -53,6 +52,7 @@ export default function BookingInquiryModal({
 }: BookingInquiryModalProps) {
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
 
   const [form, setForm] = useState({
@@ -76,6 +76,7 @@ export default function BookingInquiryModal({
 
     setSubmitted(false);
     setError("");
+    setFieldErrors({});
     setAttachmentFile(null);
     setForm((prev) => ({ ...prev, name: "", email: "" }));
 
@@ -125,9 +126,40 @@ export default function BookingInquiryModal({
 
   if (!isOpen) return null;
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    if (!form.name.trim()) {
+      errors.name = "Full name is required.";
+    }
+
+    // Email Validation (regex)
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!form.email.trim()) {
+      errors.email = "Email address is required.";
+    } else if (!emailRegex.test(form.email)) {
+      errors.email = "Please enter a valid email address.";
+    }
+
+    if (!form.startDate) {
+      errors.startDate = "Start date is required.";
+    }
+
+    if (!form.endDate) {
+      errors.endDate = "End date is required.";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError("");
+
+    if (!validateForm()) {
+      return;
+    }
 
     if (attachmentFile && attachmentFile.size > MAX_DOCUMENT_SIZE) {
       setError("The document must be 2 MB or smaller.");
@@ -164,10 +196,10 @@ export default function BookingInquiryModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
       <div
         ref={modalRef}
-        className="w-full max-w-lg rounded-xl border border-border bg-card shadow-2xl"
+        className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border border-border bg-card shadow-2xl"
       >
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border p-6">
+        {/* Header (Fixe en haut) */}
+        <div className="flex shrink-0 items-center justify-between border-b border-border p-6">
           <div>
             <h2 className="text-xl font-semibold">
               Request a Consultation
@@ -187,172 +219,192 @@ export default function BookingInquiryModal({
           </button>
         </div>
 
-        {submitted ? (
-          <InquirySuccess clinicName={clinicName} onClose={onClose} />
-        ) : (
-          <form
-            onSubmit={handleSubmit}
-            className="space-y-4 p-6"
-          >
-            <div className="grid grid-cols-2 gap-4">
-              <div className="col-span-2 sm:col-span-1">
-                <label className="mb-1.5 block text-sm font-medium">
-                  Full Name *
-                </label>
-
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      name: e.target.value,
-                    })
-                  }
-                  placeholder="Your full name"
-                  className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-
-              <div className="col-span-2 sm:col-span-1">
-                <label className="mb-1.5 block text-sm font-medium">
-                  Email Address *
-                </label>
-
-                <input
-                  type="email"
-                  required
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm({
-                      ...form,
-                      email: e.target.value,
-                    })
-                  }
-                  placeholder="your@email.com"
-                  className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-                />
-              </div>
-            </div>
-
-            <div>
-  <label className="mb-1.5 block text-sm font-medium">
-    Surgery of Interest
-  </label>
-
-  <div className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm">
-    {form.procedure}
-  </div>
-</div>
-
-            <div className="grid grid-cols-2 gap-4">
-  <div>
-    <label className="mb-1.5 block text-sm font-medium">
-      Start Date *
-    </label>
-
-    <input
-      type="date"
-      required
-      value={form.startDate}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          startDate: e.target.value,
-        })
-      }
-      min={new Date().toISOString().split("T")[0]}
-      className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-    />
-  </div>
-
-  <div>
-    <label className="mb-1.5 block text-sm font-medium">
-      End Date *
-    </label>
-
-    <input
-      type="date"
-      required
-      value={form.endDate}
-      onChange={(e) =>
-        setForm({
-          ...form,
-          endDate: e.target.value,
-        })
-      }
-      min={form.startDate || new Date().toISOString().split("T")[0]}
-      className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-    />
-  </div>
-</div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Additional Details
-              </label>
-
-              <textarea
-                rows={4}
-                value={form.details}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    details: e.target.value,
-                  })
-                }
-                placeholder="Any questions, medical history details, or special requests..."
-                className="w-full resize-none rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-
-            <div>
-              <label className="mb-1.5 block text-sm font-medium">
-                Supporting Document <span className="font-normal text-muted-foreground">(optional)</span>
-              </label>
-              <input
-                type="file"
-                accept="application/pdf,image/jpeg,.pdf,.jpg,.jpeg"
-                onChange={(e) => {
-                  const selectedFile = e.target.files?.[0] || null;
-                  if (selectedFile && selectedFile.size > MAX_DOCUMENT_SIZE) {
-                    setAttachmentFile(null);
-                    e.target.value = "";
-                    setError("The document must be 2 MB or smaller.");
-                    return;
-                  }
-                  setError("");
-                  setAttachmentFile(selectedFile);
-                }}
-                className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
-              />
-              <p className="mt-1 text-xs text-muted-foreground">
-                PDF or JPEG only, maximum 2 MB.
-              </p>
-            </div>
-
-            <p className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground">
-              Your inquiry will be sent directly to the clinic. They
-              will contact you via email—no phone numbers are shared
-              without your consent.
-            </p>
-
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+        {/* Main Content */}
+        <div className="overflow-y-auto p-6">
+          {submitted ? (
+            <InquirySuccess clinicName={clinicName} onClose={onClose} />
+          ) : (
+            <form
+              onSubmit={handleSubmit}
+              className="space-y-4"
+              noValidate
             >
-              <Send size={16} />
-              Send Inquiry to Clinic
-            </button>
-          </form>
-        )}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Full Name <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="text"
+                    value={form.name}
+                    onChange={(e) => {
+                      setForm({ ...form, name: e.target.value });
+                      if (fieldErrors.name) setFieldErrors({ ...fieldErrors, name: "" });
+                    }}
+                    placeholder="Your full name"
+                    className={`w-full rounded-lg border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                      fieldErrors.name ? "border-error focus:ring-error" : "border-border focus:ring-ring"
+                    }`}
+                  />
+                  {fieldErrors.name && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-error">
+                      <AlertCircle size={12} /> {fieldErrors.name}
+                    </p>
+                  )}
+                </div>
+
+                <div className="col-span-2 sm:col-span-1">
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Email Address <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="email"
+                    value={form.email}
+                    onChange={(e) => {
+                      setForm({ ...form, email: e.target.value });
+                      if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: "" });
+                    }}
+                    placeholder="your@email.com"
+                    className={`w-full rounded-lg border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                      fieldErrors.email ? "border-error focus:ring-error" : "border-border focus:ring-ring"
+                    }`}
+                  />
+                  {fieldErrors.email && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-error">
+                      <AlertCircle size={12} /> {fieldErrors.email}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Surgery of Interest
+                </label>
+
+                <div className="w-full rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm">
+                  {form.procedure}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    Start Date <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="date"
+                    value={form.startDate}
+                    onChange={(e) => {
+                      setForm({ ...form, startDate: e.target.value });
+                      if (fieldErrors.startDate) setFieldErrors({ ...fieldErrors, startDate: "" });
+                    }}
+                    min={new Date().toISOString().split("T")[0]}
+                    className={`w-full rounded-lg border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                      fieldErrors.startDate ? "border-error focus:ring-error" : "border-border focus:ring-ring"
+                    }`}
+                  />
+                  {fieldErrors.startDate && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-error">
+                      <AlertCircle size={12} /> {fieldErrors.startDate}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium">
+                    End Date <span className="text-red-500">*</span>
+                  </label>
+
+                  <input
+                    type="date"
+                    value={form.endDate}
+                    onChange={(e) => {
+                      setForm({ ...form, endDate: e.target.value });
+                      if (fieldErrors.endDate) setFieldErrors({ ...fieldErrors, endDate: "" });
+                    }}
+                    min={form.startDate || new Date().toISOString().split("T")[0]}
+                    className={`w-full rounded-lg border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 ${
+                      fieldErrors.endDate ? "border-error focus:ring-error" : "border-border focus:ring-ring"
+                    }`}
+                  />
+                  {fieldErrors.endDate && (
+                    <p className="mt-1 flex items-center gap-1 text-xs text-error">
+                      <AlertCircle size={12} /> {fieldErrors.endDate}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Additional Details
+                </label>
+
+                <textarea
+                  rows={4}
+                  value={form.details}
+                  onChange={(e) =>
+                    setForm({
+                      ...form,
+                      details: e.target.value,
+                    })
+                  }
+                  placeholder="Any questions, medical history details, or special requests..."
+                  className="w-full resize-none rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">
+                  Supporting Document <span className="font-normal text-muted-foreground">(optional)</span>
+                </label>
+                <input
+                  type="file"
+                  accept="application/pdf,image/jpeg,.pdf,.jpg,.jpeg"
+                  onChange={(e) => {
+                    const selectedFile = e.target.files?.[0] || null;
+                    if (selectedFile && selectedFile.size > MAX_DOCUMENT_SIZE) {
+                      setAttachmentFile(null);
+                      e.target.value = "";
+                      setError("The document must be 2 MB or smaller.");
+                      return;
+                    }
+                    setError("");
+                    setAttachmentFile(selectedFile);
+                  }}
+                  className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
+                />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  PDF or JPEG only, maximum 2 MB.
+                </p>
+              </div>
+
+              <p className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground">
+                Your inquiry will be sent directly to the clinic. They
+                will contact you via email—no phone numbers are shared
+                without your consent.
+              </p>
+
+              {error && (
+                <p role="alert" className="text-sm text-destructive">
+                  {error}
+                </p>
+              )}
+
+              <button
+                type="submit"
+                className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
+              >
+                <Send size={16} />
+                Send Inquiry to Clinic
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
