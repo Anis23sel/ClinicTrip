@@ -31,6 +31,7 @@ type BookingDetailsProps = {
   onMessageChange: (value: string) => void;
   onCloseContact: () => void;
   onSendEmail: () => void;
+  onOpenMessages?: (requestId: string) => void;
 };
 
 export default function BookingDetails({
@@ -61,6 +62,7 @@ export default function BookingDetails({
   onMessageChange,
   onCloseContact,
   onSendEmail,
+  onOpenMessages,
 }: BookingDetailsProps) {
   return (
     <div>
@@ -128,7 +130,18 @@ export default function BookingDetails({
       </section>
 
       <div className="mb-5 flex flex-wrap gap-3">
-        <button type="button" onClick={onContact} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90">Contact Patient</button>
+        <button 
+          type="button" 
+          onClick={() => {
+            if (onOpenMessages) {
+              onOpenMessages(String(booking.id));
+            }
+          }} 
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+        >
+          Contact Patient
+        </button>
+
         {booking.inquiryCompleted && !booking.clinicDecision && (
           <button type="button" onClick={onAccept} disabled={accepting} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
             {accepting ? "Accepting..." : "Accept consultation"}
@@ -136,6 +149,8 @@ export default function BookingDetails({
         )}
       </div>
 
+      {/* Form to send email */}
+      {/* 
       {contacting && (
         <section className="rounded-lg border border-border bg-card p-5">
           <h4 className="mb-4 text-lg font-semibold">Contact {booking.patientName}</h4>
@@ -153,7 +168,8 @@ export default function BookingDetails({
             </div>
           </div>
         </section>
-      )}
+      )} 
+      */}
     </div>
   );
 }

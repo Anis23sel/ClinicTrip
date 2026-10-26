@@ -15,7 +15,12 @@ type ContactState = {
   message: string;
 };
 
-export default function ClinicBookings({ clinicId }: { clinicId: string }) {
+interface ClinicBookingsProps {
+  clinicId: string;
+  onOpenMessages?: (requestId: string) => void;
+}
+
+export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBookingsProps) {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -290,6 +295,7 @@ export default function ClinicBookings({ clinicId }: { clinicId: string }) {
           onMessageChange={(message) => setContact((current) => ({ ...current, message }))}
           onCloseContact={closeContactForm}
           onSendEmail={() => handleSendEmail(selectedBooking)}
+          onOpenMessages={onOpenMessages}
         />
       )}
     </section>

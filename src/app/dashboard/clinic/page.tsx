@@ -1,7 +1,8 @@
-'use client';
+"use client";
 
 import { useEffect, useState } from 'react';
-import { Building, Calendar, Home, Images, Stethoscope, Users } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
+import { Building, Calendar, Home, Images, MessageSquare, Stethoscope, Users } from 'lucide-react';
 import { createClient } from '@/app/utils/supabase/client';
 import ClinicAccommodations from '../../components/dashboard/clinic/ClinicAccommodations';
 import ClinicBookings from '@/app/components/dashboard/clinic/ClinicBookings';
@@ -10,8 +11,9 @@ import ClinicProcedures from '../../components/dashboard/clinic/ClinicProcedures
 import ClinicProfile from '../../components/dashboard/clinic/ClinicProfile';
 import ClinicOverview from '@/app/components/dashboard/clinic/ClinicOverview';
 import ClinicGalleryManager from '@/app/components/dashboard/clinic/ClinicGalleryManager';
+import ClinicMessages from '@/app/components/dashboard/clinic/ClinicMessages';
 
-type Tab = 'overview' | 'profile' | 'doctors' | 'procedures' | 'accommodations' | 'gallery' | 'bookings';
+type Tab = 'overview' | 'profile' | 'doctors' | 'procedures' | 'accommodations' | 'gallery' | 'bookings' | 'messages';
 
 export type ClinicRecord = {
   id: string;
@@ -60,16 +62,28 @@ const tabs = [
   { id: 'accommodations' as const, label: 'Accommodations', icon: Home },
   { id: 'gallery' as const, label: 'Gallery', icon: Images },
   { id: 'bookings' as const, label: 'Consultations', icon: Calendar },
+  { id: 'messages' as const, label: 'Messages', icon: MessageSquare },
 ];
 
 export default function ClinicDashboard() {
-  const [activeTab, setActiveTab] = useState<Tab>('overview');
+  const searchParams = useSearchParams();
+  const requestIdParam = searchParams.get("requestId");
+
+  const [activeTab, setActiveTab] = useState<Tab>(requestIdParam ? 'messages' : 'overview');
+  const [selectedRequestIdFromBooking, setSelectedRequestIdFromBooking] = useState<string | null>(requestIdParam);
+
+
   const [clinic, setClinic] = useState<ClinicRecord | null>(null);
   const [procedures, setProcedures] = useState<ClinicProcedureRecord[]>([]);
   const [medicalProcedures, setMedicalProcedures] = useState<MedicalProcedureOption[]>([]);
   const [bookings, setBookings] = useState<ClinicBookingRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const handleOpenMessages = (requestId: string) => {
+    setSelectedRequestIdFromBooking(requestId);
+    setActiveTab('messages');
+  };
 
   useEffect(() => {
     const loadClinicDashboard = async () => {
@@ -200,7 +214,12 @@ export default function ClinicDashboard() {
             {!loading && !error && activeTab === 'procedures' && <ClinicProcedures procedures={procedures} procedureOptions={medicalProcedures} onAddProcedure={addProcedure} />}
             {activeTab === 'accommodations' && <ClinicAccommodations />}
             {!loading && !error && activeTab === 'gallery' && clinic && <ClinicGalleryManager clinicId={clinic.id} />}
-            {!loading && !error && activeTab === 'bookings' && clinic && <ClinicBookings clinicId={clinic.id} />}
+            {!loading && !error && activeTab === 'bookings' && clinic && (
+              <ClinicBookings clinicId={clinic.id} onOpenMessages={handleOpenMessages} />
+            )}
+            {!loading && !error && activeTab === 'messages' && clinic && (
+              <ClinicMessages clinicId={clinic.id} initialRequestId={selectedRequestIdFromBooking} />
+            )}
           </div>
         </div>
       </main>

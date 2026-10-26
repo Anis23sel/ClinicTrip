@@ -1,15 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Calendar, FileText, LayoutDashboard, ReceiptText, User } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { Calendar, FileText, LayoutDashboard, MessageSquare, ReceiptText, User } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import PatientDocuments from "../../components/dashboard/patient/PatientDocuments";
 import PatientProfile from "../../components/dashboard/patient/PatientProfile";
 import PatientRequests from "@/app/components/dashboard/patient/PatientRequests";
 import PatientInvoices from "@/app/components/dashboard/patient/PatientInvoices";
 import PatientBookingOverview from "@/app/components/dashboard/patient/PatientBookingOverview";
+import PatientMessages from "@/app/components/dashboard/patient/PatientMessages";
 
-type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents";
+type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" | "messages";
 
 type Profile = {
   firstName: string;
@@ -22,6 +24,7 @@ type Profile = {
 const tabs = [
   { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
   { id: "consultations" as const, label: "My consultations", icon: Calendar },
+  { id: "messages" as const, label: "Messages", icon: MessageSquare },
   { id: "invoices" as const, label: "Invoices", icon: ReceiptText },
   { id: "profile" as const, label: "Profile", icon: User },
   { id: "documents" as const, label: "Documents", icon: FileText },
@@ -29,8 +32,16 @@ const tabs = [
 
 export default function PatientDashboard() {
   const supabase = createClient();
+  const searchParams = useSearchParams();
+  const requestIdParam = searchParams.get("requestId");
 
-  const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [activeTab, setActiveTab] = useState<Tab>(requestIdParam ? "messages" : "overview");
+  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(requestIdParam);
+
+  const handleOpenMessages = (requestId: string) => {
+    setSelectedRequestId(requestId);
+    setActiveTab("messages");
+  };
 
   const [profile, setProfile] = useState<Profile>({
     firstName: "",
@@ -129,7 +140,7 @@ export default function PatientDashboard() {
     };
 
     loadPatientProfile();
-  }, []);
+  }, [supabase]);
 
   const savePatientProfile = async (nextProfile: Profile) => {
     // 1. Get authenticated user
@@ -237,7 +248,11 @@ export default function PatientDashboard() {
             {activeTab === "overview" && <PatientBookingOverview />}
 
             {activeTab === "consultations" && (
-              <PatientRequests />
+              <PatientRequests onOpenMessages={handleOpenMessages} />
+            )}
+
+            {activeTab === "messages" && (
+              <PatientMessages initialRequestId={selectedRequestId} />
             )}
 
             {activeTab === "invoices" && <PatientInvoices />}

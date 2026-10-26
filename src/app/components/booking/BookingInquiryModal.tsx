@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { Send, X, AlertCircle } from "lucide-react";
+import { Send, X, AlertCircle, Paperclip } from "lucide-react";
 import InquirySuccess from "./InquirySuccess";
 import { createClient } from "@/app/utils/supabase/client";
 
@@ -198,16 +198,20 @@ export default function BookingInquiryModal({
         ref={modalRef}
         className="flex max-h-[90vh] w-full max-w-lg flex-col rounded-xl border border-border bg-card shadow-2xl"
       >
-        {/* Header (Fixe en haut) */}
+        {/* Header*/}
         <div className="flex shrink-0 items-center justify-between border-b border-border p-6">
-          <div>
-            <h2 className="text-xl font-semibold">
-              Request a Consultation
-            </h2>
-
-            <p className="mt-0.5 text-sm text-muted-foreground">
-              {clinicName}
-            </p>
+          <div className="flex items-center gap-2">
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Paperclip size={20} />
+            </div>
+            <div>
+              <h2 className="text-xl font-semibold">
+                Send Files & Documents
+              </h2>
+              <p className="mt-0.5 text-sm text-muted-foreground">
+                To {clinicName} (send via email)
+              </p>
+            </div>
           </div>
 
           <button
@@ -341,11 +345,10 @@ export default function BookingInquiryModal({
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium">
-                  Additional Details
+                  Message / Notes for the file
                 </label>
-
                 <textarea
-                  rows={4}
+                  rows={3}
                   value={form.details}
                   onChange={(e) =>
                     setForm({
@@ -353,14 +356,14 @@ export default function BookingInquiryModal({
                       details: e.target.value,
                     })
                   }
-                  placeholder="Any questions, medical history details, or special requests..."
+                  placeholder="Add a note regarding your attached documents or images..."
                   className="w-full resize-none rounded-lg border border-border bg-input-background px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
                 />
               </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium">
-                  Supporting Document <span className="font-normal text-muted-foreground">(optional)</span>
+                  Attach File / Image <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="file"
@@ -379,14 +382,12 @@ export default function BookingInquiryModal({
                   className="w-full rounded-lg border border-border bg-input-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-primary file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary-foreground"
                 />
                 <p className="mt-1 text-xs text-muted-foreground">
-                  PDF or JPEG only, maximum 2 MB.
+                  PDF or JPEG only, maximum 2 MB. Sent directly via email to the clinic.
                 </p>
               </div>
 
               <p className="rounded-lg bg-accent/40 px-3 py-2 text-xs text-muted-foreground">
-                Your inquiry will be sent directly to the clinic. They
-                will contact you via email—no phone numbers are shared
-                without your consent.
+                Your files and message will be delivered directly to the clinic&apos;s email inbox.
               </p>
 
               {error && (
@@ -400,7 +401,7 @@ export default function BookingInquiryModal({
                 className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-6 py-3 font-medium text-primary-foreground transition-opacity hover:opacity-90"
               >
                 <Send size={16} />
-                Send Inquiry to Clinic
+                Send File via Email
               </button>
             </form>
           )}

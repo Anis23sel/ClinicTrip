@@ -6,6 +6,7 @@ import {
   CheckCircle,
   XCircle,
   Clock,
+  MessageSquare,
 } from "lucide-react";
 import AccommodationTab from "../booking/AccommodationTab";
 import TransferTab from "../booking/TransferTab";
@@ -63,6 +64,7 @@ type Booking = {
 
 interface Props {
   booking: Booking;
+  onOpenMessages?: (requestId: string) => void;
 }
 
 const statusConfig: Record<
@@ -95,6 +97,7 @@ const statusConfig: Record<
 
 export default function BookingCard({
   booking,
+  onOpenMessages,
 }: Props) {
   const [expanded, setExpanded] =
     useState(false);
@@ -439,12 +442,15 @@ export default function BookingCard({
             !inquiryCompleted && (
               <button
                 type="button"
-                onClick={() =>
-                  setInquiryOpen(true)
-                }
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
-              >
-                Complete Inquiry
+                onClick={() => {
+                  if (onOpenMessages) {
+                    onOpenMessages(String(booking.id));
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:opacity-90 transition-opacity"
+                >
+                <MessageSquare size={16} />
+                Send Message
               </button>
             )}
 

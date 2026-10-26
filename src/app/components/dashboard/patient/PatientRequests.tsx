@@ -44,7 +44,11 @@ function formatRequestDate(
   ).toLocaleDateString()}`;
 }
 
-export default function PatientRequests() {
+interface PatientRequestsProps {
+  onOpenMessages?: (requestId: string) => void;
+}
+
+export default function PatientRequests({ onOpenMessages }: PatientRequestsProps) {
   const [requests, setRequests] = useState<RequestBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -398,6 +402,7 @@ export default function PatientRequests() {
             <BookingCard
               key={request.id}
               booking={request}
+              onOpenMessages={onOpenMessages}
             />
           ))}
 
