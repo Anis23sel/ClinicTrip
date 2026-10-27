@@ -19,6 +19,7 @@ import {
   Calendar,
   ReceiptText,
   FileText,
+  Heart,
 } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -536,6 +537,13 @@ export default function Navbar() {
                           >
                             <FileText size={16} /> Documents
                           </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=favorites`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <Heart size={16} /> Favorites
+                          </Link>
                         </div>
                       )}
                       {dashboardPath && dashboardPath !== "/dashboard/patient" && (
@@ -592,7 +600,7 @@ export default function Navbar() {
                     {[
                       ["overview", "Overview"], ["consultations", "My Consultations"],
                       ["messages", "Messages"], ["invoices", "Invoices"],
-                      ["profile", "Profile"], ["documents", "Documents"],
+                      ["profile", "Profile"], ["documents", "Documents"], ["favorites", "Favorites"],
                     ].map(([tab, label]) => (
                       <Link key={tab} href={`${dashboardPath}?tab=${tab}`} onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-border px-3 py-2 text-center text-sm hover:bg-accent">
                         {label}

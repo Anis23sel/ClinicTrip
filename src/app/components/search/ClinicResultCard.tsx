@@ -3,15 +3,26 @@
 import Link from "next/link";
 import { Camera, DollarSign, MapPin, Star } from "lucide-react";
 import type { ClinicResult } from "./searchTypes";
+import FavoriteButton from "./FavoriteButton";
 
 interface ClinicResultCardProps {
   clinic: ClinicResult;
   selectedProcedures?: string[];
+  isFavorite?: boolean;
+  isFavoritePending?: boolean;
+  isCheckingFavoriteAccess?: boolean;
+  isPatient?: boolean;
+  onToggleFavorite?: () => void;
 }
 
 export default function ClinicResultCard({
   clinic,
   selectedProcedures = [],
+  isFavorite = false,
+  isFavoritePending = false,
+  isCheckingFavoriteAccess = false,
+  isPatient = false,
+  onToggleFavorite = () => {},
 }: ClinicResultCardProps) {
   /*
    * Only add procedures to the clinic URL when the patient
@@ -32,10 +43,8 @@ export default function ClinicResultCard({
       : "";
 
   return (
-    <Link
-      href={`/clinic/${clinic.id}${query}`}
-      className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-lg transition-shadow"
-    >
+    <article className="relative overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-lg">
+      <Link href={`/clinic/${clinic.id}${query}`} className="block">
       <div className="flex flex-col md:flex-row">
         <div className="relative h-44 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/10 md:w-72">
           {clinic.images.length > 0 ? (
@@ -162,6 +171,17 @@ export default function ClinicResultCard({
           </div>
         </div>
       </div>
-    </Link>
+      </Link>
+      <div className="absolute left-3 top-3 z-10">
+        <FavoriteButton
+          clinicName={clinic.name}
+          isFavorite={isFavorite}
+          isPending={isFavoritePending}
+          isCheckingAccount={isCheckingFavoriteAccess}
+          isPatient={isPatient}
+          onToggle={onToggleFavorite}
+        />
+      </div>
+    </article>
   );
 }

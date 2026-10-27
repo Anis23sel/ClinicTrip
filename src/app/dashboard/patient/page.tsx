@@ -10,12 +10,13 @@ import PatientInvoices from "@/app/components/dashboard/patient/PatientInvoices"
 import PatientBookingOverview from "@/app/components/dashboard/patient/PatientBookingOverview";
 import PatientMessages from "@/app/components/dashboard/patient/PatientMessages";
 import PatientRequestDetails from "@/app/components/dashboard/patient/PatientRequestDetails";
+import PatientFavorites from "@/app/components/dashboard/patient/PatientFavorites";
 // Importe ton futur composant de détails ici (crée-le dans le même dossier)
 // import PatientRequestDetails from "@/app/components/dashboard/patient/PatientRequestDetails";
 
-type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" | "messages" | "details";
+type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" | "messages" | "details" | "favorites";
 type Profile = { firstName: string; lastName: string; email: string; gender: string; phone: string };
-const validTabs: Tab[] = ["overview", "consultations", "invoices", "profile", "documents", "messages", "details"];
+const validTabs: Tab[] = ["overview", "consultations", "invoices", "profile", "documents", "messages", "details", "favorites"];
 
 export default function PatientDashboard() {
   const supabase = createClient();
@@ -86,6 +87,8 @@ export default function PatientDashboard() {
         {activeTab === "messages" && <PatientMessages initialRequestId={requestId} />}
         
         {activeTab === "invoices" && <PatientInvoices />}
+
+        {activeTab === "favorites" && <PatientFavorites />}
         
         {activeTab === "documents" && <PatientDocuments />}
         
