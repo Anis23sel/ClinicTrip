@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Building, Calendar, Home, Images, MessageSquare, Stethoscope, Users } from 'lucide-react';
 import { createClient } from '@/app/utils/supabase/client';
@@ -65,7 +65,7 @@ const tabs = [
   { id: 'messages' as const, label: 'Messages', icon: MessageSquare },
 ];
 
-export default function ClinicDashboard() {
+function ClinicDashboardContent() {
   const searchParams = useSearchParams();
   const requestIdParam = searchParams.get("requestId");
 
@@ -250,5 +250,13 @@ export default function ClinicDashboard() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function ClinicDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background px-4 py-8 text-center text-muted-foreground">Loading clinic dashboard...</div>}>
+      <ClinicDashboardContent />
+    </Suspense>
   );
 }

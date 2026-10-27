@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import PatientDocuments from "@/app/components/dashboard/patient/PatientDocuments";
@@ -18,7 +18,7 @@ type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" |
 type Profile = { firstName: string; lastName: string; email: string; gender: string; phone: string };
 const validTabs: Tab[] = ["overview", "consultations", "invoices", "profile", "documents", "messages", "details", "favorites"];
 
-export default function PatientDashboard() {
+function PatientDashboardContent() {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -117,5 +117,13 @@ export default function PatientDashboard() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function PatientDashboard() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-background px-4 py-8 text-center text-muted-foreground">Loading patient dashboard...</div>}>
+      <PatientDashboardContent />
+    </Suspense>
   );
 }
