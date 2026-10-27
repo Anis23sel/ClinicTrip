@@ -15,6 +15,10 @@ import {
   Search,
   Bell,
   MessageSquare,
+  LayoutDashboard,
+  Calendar,
+  ReceiptText,
+  FileText,
 } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import type { User } from "@supabase/supabase-js";
@@ -65,7 +69,11 @@ export default function Navbar() {
     TRY: { symbol: "₺", label: "TRY - ₺" },
   } as const;
 
-  const navLinks = [{ href: "/about", label: "About us" }, { href: "/faq", label: "FAQ" }, { href: "/contact", label: "Contact" }];
+  const navLinks = [
+    { href: "/about", label: "About us" },
+    { href: "/faq", label: "FAQ" },
+    { href: "/contact", label: "Contact" },
+  ];
 
   // Close menus when clicking outside
   useEffect(() => {
@@ -75,15 +83,12 @@ export default function Navbar() {
       if (languageMenuRef.current && !languageMenuRef.current.contains(target)) {
         setLanguageMenuOpen(false);
       }
-
       if (currencyMenuRef.current && !currencyMenuRef.current.contains(target)) {
         setCurrencyMenuOpen(false);
       }
-
       if (userMenuRef.current && !userMenuRef.current.contains(target)) {
         setUserMenuOpen(false);
       }
-
       if (notificationMenuRef.current && !notificationMenuRef.current.contains(target)) {
         setNotificationMenuOpen(false);
       }
@@ -95,19 +100,23 @@ export default function Navbar() {
     };
   }, []);
 
-  // Synchronisation des notifications non lues (is_read === false)
+  // Handle user authentication and notifications
   useEffect(() => {
-    let channel: any = null;
+    let channel: ReturnType<typeof supabase.channel> | null = null;
 
     const getUserAndNotifications = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setUser(user);
-
-      if (!user) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        setUser(null);
+        setDashboardPath(null);
         setLoadingUser(false);
         return;
       }
 
+      setUser(user);
+
+      // Determine dashboard path and fetch notifications based on user role
       const { data: profile } = await supabase
         .from("profiles")
         .select("id, role")
@@ -124,46 +133,42 @@ export default function Navbar() {
           .single();
 
         if (patient) {
-          const fetchPatientNotifications = async () => {
-            const { data: reqs } = await supabase
-              .from("Patient_request")
-              .select("id, id_clinic, procedure")
-              .eq("id_patient", patient.id);
+          const { data: reqs } = await supabase
+            .from("Patient_request")
+            .select("id, id_clinic, procedure")
+            .eq("id_patient", patient.id);
 
-            if (reqs && reqs.length > 0) {
-              const { data: messagesData } = await supabase
-                .from("messages")
-                .select("request_id, receiver_id, sender_id, is_read, created_at")
-                .eq("receiver_id", user.id)
-                .eq("is_read", false);
+          if (reqs && reqs.length > 0) {
+            const { data: messagesData } = await supabase
+              .from("messages")
+              .select("request_id, receiver_id, sender_id, is_read, created_at")
+              .eq("receiver_id", user.id)
+              .eq("is_read", false);
 
-              const unreadItems: NotificationItem[] = [];
-              for (const r of reqs) {
-                const reqMsgs = (messagesData || []).filter((m) => m.request_id === r.id);
-                if (reqMsgs.length > 0) {
-                  reqMsgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const unreadItems: NotificationItem[] = [];
+            for (const r of reqs) {
+              const reqMsgs = (messagesData || []).filter((m) => m.request_id === r.id);
+              if (reqMsgs.length > 0) {
+                reqMsgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-                  const { data: clinic } = await supabase
-                    .from("clinics")
-                    .select("clinic_name")
-                    .eq("id", r.id_clinic)
-                    .single();
+                const { data: clinic } = await supabase
+                  .from("clinics")
+                  .select("clinic_name")
+                  .eq("id", r.id_clinic)
+                  .single();
 
-                  unreadItems.push({
-                    requestId: r.id,
-                    name: clinic?.clinic_name || "Clinic",
-                    procedure: r.procedure || "Consultation",
-                    createdAt: reqMsgs[0].created_at,
-                  });
-                }
+                unreadItems.push({
+                  requestId: r.id,
+                  name: clinic?.clinic_name || "Clinic",
+                  procedure: r.procedure || "Consultation",
+                  createdAt: reqMsgs[0].created_at,
+                });
               }
-              setNotifications(unreadItems);
-            } else {
-              setNotifications([]);
             }
-          };
-
-          await fetchPatientNotifications();
+            setNotifications(unreadItems);
+          } else {
+            setNotifications([]);
+          }
         }
       } else if (profile?.role === "clinic") {
         setDashboardPath("/dashboard/clinic");
@@ -175,48 +180,44 @@ export default function Navbar() {
           .single();
 
         if (clinic) {
-          const fetchClinicNotifications = async () => {
-            const { data: reqs } = await supabase
-              .from("Patient_request")
-              .select("id, id_patient, procedure")
-              .eq("id_clinic", clinic.id);
+          const { data: reqs } = await supabase
+            .from("Patient_request")
+            .select("id, id_patient, procedure")
+            .eq("id_clinic", clinic.id);
 
-            if (reqs && reqs.length > 0) {
-              const { data: messagesData } = await supabase
-                .from("messages")
-                .select("request_id, receiver_id, sender_id, is_read, created_at")
-                .eq("receiver_id", user.id)
-                .eq("is_read", false);
+          if (reqs && reqs.length > 0) {
+            const { data: messagesData } = await supabase
+              .from("messages")
+              .select("request_id, receiver_id, sender_id, is_read, created_at")
+              .eq("receiver_id", user.id)
+              .eq("is_read", false);
 
-              const unreadItems: NotificationItem[] = [];
-              for (const r of reqs) {
-                const reqMsgs = (messagesData || []).filter((m) => m.request_id === r.id);
-                if (reqMsgs.length > 0) {
-                  reqMsgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+            const unreadItems: NotificationItem[] = [];
+            for (const r of reqs) {
+              const reqMsgs = (messagesData || []).filter((m) => m.request_id === r.id);
+              if (reqMsgs.length > 0) {
+                reqMsgs.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-                  const { data: pat } = await supabase
-                    .from("patients")
-                    .select("first_name, last_name")
-                    .eq("id", r.id_patient)
-                    .single();
+                const { data: pat } = await supabase
+                  .from("patients")
+                  .select("first_name, last_name")
+                  .eq("id", r.id_patient)
+                  .single();
 
-                  const patName = pat ? `${pat.first_name || ""} ${pat.last_name || ""}`.trim() : "Patient";
+                const patName = pat ? `${pat.first_name || ""} ${pat.last_name || ""}`.trim() : "Patient";
 
-                  unreadItems.push({
-                    requestId: r.id,
-                    name: patName,
-                    procedure: r.procedure || "Consultation",
-                    createdAt: reqMsgs[0].created_at,
-                  });
-                }
+                unreadItems.push({
+                  requestId: r.id,
+                  name: patName,
+                  procedure: r.procedure || "Consultation",
+                  createdAt: reqMsgs[0].created_at,
+                });
               }
-              setNotifications(unreadItems);
-            } else {
-              setNotifications([]);
             }
-          };
-
-          await fetchClinicNotifications();
+            setNotifications(unreadItems);
+          } else {
+            setNotifications([]);
+          }
         }
       } else if (profile?.role === "admin") {
         setDashboardPath("/dashboard/admin");
@@ -227,7 +228,7 @@ export default function Navbar() {
 
     getUserAndNotifications();
 
-    // Set up a real-time subscription to the messages table to update notifications when new messages arrive
+    // Set up real-time subscription for notifications
     const channelName = `navbar-messages-realtime-${Math.random()}`;
     channel = supabase
       .channel(channelName)
@@ -244,7 +245,7 @@ export default function Navbar() {
       )
       .subscribe();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         getUserAndNotifications();
       } else {
@@ -270,7 +271,7 @@ export default function Navbar() {
     setNotifications((prev) => prev.filter((n) => n.requestId !== requestId));
 
     if (dashboardPath) {
-      router.push(`${dashboardPath}?requestId=${requestId}`);
+      router.push(`${dashboardPath}?tab=messages&requestId=${encodeURIComponent(requestId)}`);
     }
   };
 
@@ -295,7 +296,7 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Navigation */}
+        {/* Navigation principale */}
         <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link
@@ -316,10 +317,11 @@ export default function Navbar() {
           </Link>
         </div>
 
-        {/* Language + Currency + Notifications + Auth */}
+        {/* Right: Language, Currency, Notifications, Profile */}
         <div className="hidden items-center gap-4 md:flex">
           <div className="flex h-9 items-center gap-1 rounded-lg border border-border bg-card px-1">
-            {/* Languages */}
+            
+            {/* Language Selector */}
             <div ref={languageMenuRef} className="relative hidden h-full md:flex items-center">
               <button
                 onClick={() => setLanguageMenuOpen((prev) => !prev)}
@@ -327,9 +329,7 @@ export default function Navbar() {
               >
                 <span
                   className={`fi fi-${
-                    languageOptions[
-                      language as keyof typeof languageOptions
-                    ].flag
+                    languageOptions[language as keyof typeof languageOptions].flag
                   }`}
                 />
                 <ChevronDown size={16} />
@@ -365,11 +365,7 @@ export default function Navbar() {
                 className="flex h-full items-center gap-2 rounded-md px-2.5 transition hover:bg-accent focus:outline-none"
               >
                 <span className="text-sm font-medium">
-                  {
-                    currencyOptions[
-                      currency as keyof typeof currencyOptions
-                    ].symbol
-                  }
+                  {currencyOptions[currency as keyof typeof currencyOptions].symbol}
                 </span>
                 <ChevronDown size={16} />
               </button>
@@ -431,7 +427,7 @@ export default function Navbar() {
                         <button
                           key={n.requestId}
                           onClick={() => handleNotificationClick(n.requestId)}
-                          className="w-full text-left flex items-start gap-3 p-3 transition hover:bg-accent block"
+                          className="w-full text-left flex items-start gap-3 p-3 transition hover:bg-accent"
                         >
                           <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary shrink-0">
                             <MessageSquare size={14} />
@@ -455,18 +451,14 @@ export default function Navbar() {
 
           <div className="h-5 w-px bg-border" />
 
-          {/* Authentication */}
+          {/* Authentification / User Menu */}
           {!loadingUser && (
             <>
               {!user ? (
                 <>
-                  <Link
-                    href="/login"
-                    className="text-sm text-foreground transition-colors hover:text-primary"
-                  >
+                  <Link href="/login" className="text-sm text-foreground transition-colors hover:text-primary">
                     Sign in
                   </Link>
-
                   <Link
                     href="/signup"
                     className="rounded-lg border border-primary px-4 py-2 text-sm text-primary transition-all hover:bg-primary hover:text-primary-foreground"
@@ -475,7 +467,6 @@ export default function Navbar() {
                   </Link>
                 </>
               ) : (
-                /* Profile dropdown menu */
                 <div ref={userMenuRef} className="relative">
                   <button
                     onClick={() => {
@@ -487,35 +478,73 @@ export default function Navbar() {
                     className="flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-foreground transition hover:bg-accent focus:outline-none"
                     title="User account"
                   >
-                    <CircleUserRound
-                      size={22}
-                      strokeWidth={1.7}
-                      className="text-primary"
-                    />
+                    <CircleUserRound size={22} strokeWidth={1.7} className="text-primary" />
                     <ChevronDown size={16} className="text-muted-foreground" />
                   </button>
 
                   {userMenuOpen && (
                     <div className="absolute right-0 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-card p-2 shadow-xl z-50">
                       <div className="px-3 py-2">
-                        <p className="text-xs text-muted-foreground">
-                          Logged in as
-                        </p>
-                        <p className="truncate text-sm font-semibold text-foreground">
-                          {user.email}
-                        </p>
+                        <p className="text-xs text-muted-foreground">Logged in as</p>
+                        <p className="truncate text-sm font-semibold text-foreground">{user.email}</p>
                       </div>
 
                       <div className="my-1 h-px bg-border" />
 
-                      {dashboardPath && (
+                      {/* Dashboard Links */}
+                      {dashboardPath === "/dashboard/patient" && (
+                        <div className="space-y-1">
+                          <Link
+                            href={`${dashboardPath}?tab=overview`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <LayoutDashboard size={16} /> Overview
+                          </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=consultations`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <Calendar size={16} /> My Consultations
+                          </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=messages`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <MessageSquare size={16} /> Messages
+                          </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=invoices`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <ReceiptText size={16} /> Invoices
+                          </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=profile`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <UserIcon size={16} /> Profile
+                          </Link>
+                          <Link
+                            href={`${dashboardPath}?tab=documents`}
+                            onClick={() => setUserMenuOpen(false)}
+                            className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
+                          >
+                            <FileText size={16} /> Documents
+                          </Link>
+                        </div>
+                      )}
+                      {dashboardPath && dashboardPath !== "/dashboard/patient" && (
                         <Link
                           href={dashboardPath}
                           onClick={() => setUserMenuOpen(false)}
                           className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm text-foreground transition-colors hover:bg-accent"
                         >
-                          <UserIcon size={16} />
-                          My Profile
+                          <LayoutDashboard size={16} /> Dashboard
                         </Link>
                       )}
 
@@ -525,8 +554,7 @@ export default function Navbar() {
                         onClick={handleSignOut}
                         className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-red-600 transition-colors hover:bg-red-50 dark:hover:bg-red-900/10"
                       >
-                        <LogOut size={16} />
-                        Sign out
+                        <LogOut size={16} /> Sign out
                       </button>
                     </div>
                   )}
@@ -536,7 +564,7 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile Toggle */}
+        {/* Menu Mobile */}
         <button
           onClick={() => setMobileMenuOpen((prev) => !prev)}
           className="p-2 text-foreground md:hidden"
@@ -545,112 +573,43 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
       {mobileMenuOpen && (
         <div className="border-t border-border bg-card md:hidden">
-          <div className="space-y-3 px-4 py-4">
-
-            <div className="flex gap-3">
-              <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border bg-input-background px-3 py-2">
-                <Globe size={16} className="text-muted-foreground" />
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="flex-1 border-none bg-transparent text-sm outline-none"
-                >
-                  <option value="EN">English</option>
-                  <option value="FR">Français</option>
-                  <option value="ES">Español</option>
-                  <option value="TR">Türkçe</option>
-                  <option value="AR">العربية</option>
-                </select>
-              </div>
-
-              <div className="flex flex-1 items-center gap-1.5 rounded-lg border border-border bg-input-background px-3 py-2">
-                <select
-                  value={currency}
-                  onChange={(e) => setCurrency(e.target.value)}
-                  className="flex-1 border-none bg-transparent text-sm outline-none"
-                >
-                  <option value="USD">USD - $</option>
-                  <option value="EUR">EUR - €</option>
-                  <option value="GBP">GBP - £</option>
-                  <option value="TRY">TRY - ₺</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="space-y-2 border-t border-border pt-3">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="block py-2 text-foreground transition-colors hover:text-primary"
-                >
-                  {link.label}
-                </Link>
-              ))}
-
-              <Link
-                href="/search"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-center text-primary-foreground font-medium"
-              >
-                <Search size={16} />
-                <span>Search</span>
+          <div className="space-y-2 px-4 py-4">
+            {navLinks.map((link) => (
+              <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="block py-2 text-foreground hover:text-primary">
+                {link.label}
               </Link>
-
-              {!loadingUser && (
-                <div className="border-t border-border pt-3">
-                  {!user ? (
-                    <div className="flex gap-3">
-                      <Link
-                        href="/login"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex-1 py-2 text-center text-foreground transition-colors hover:text-primary"
-                      >
-                        Sign in
+            ))}
+            <Link href="/search" onClick={() => setMobileMenuOpen(false)} className="flex items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 font-medium text-primary-foreground">
+              <Search size={16} /> Search
+            </Link>
+            {!loadingUser && (user ? (
+              <div className="space-y-2 border-t border-border pt-4">
+                <p className="truncate text-center text-sm font-semibold">{user.email}</p>
+                {dashboardPath === "/dashboard/patient" ? (
+                  <div className="grid grid-cols-2 gap-2">
+                    {[
+                      ["overview", "Overview"], ["consultations", "My Consultations"],
+                      ["messages", "Messages"], ["invoices", "Invoices"],
+                      ["profile", "Profile"], ["documents", "Documents"],
+                    ].map(([tab, label]) => (
+                      <Link key={tab} href={`${dashboardPath}?tab=${tab}`} onClick={() => setMobileMenuOpen(false)} className="rounded-lg border border-border px-3 py-2 text-center text-sm hover:bg-accent">
+                        {label}
                       </Link>
-
-                      <Link
-                        href="/signup"
-                        onClick={() => setMobileMenuOpen(false)}
-                        className="flex-1 rounded-lg border border-primary px-4 py-2 text-center text-primary"
-                      >
-                        Join us
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="w-full space-y-3 pt-1">
-                      <div className="text-center">
-                        <p className="text-xs text-muted-foreground">Logged in as</p>
-                        <p className="truncate text-sm font-semibold text-foreground">{user.email}</p>
-                      </div>
-
-                      {dashboardPath && (
-                        <Link
-                          href={dashboardPath}
-                          onClick={() => setMobileMenuOpen(false)}
-                          className="flex w-full items-center justify-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-                        >
-                          <UserIcon size={18} />
-                          My Profile
-                        </Link>
-                      )}
-
-                      <button
-                        onClick={handleSignOut}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50/50 px-4 py-2.5 text-sm font-medium text-red-600 transition-colors hover:bg-red-100 dark:border-red-900/20 dark:bg-red-900/10"
-                      >
-                        <LogOut size={18} />
-                        Sign out
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+                    ))}
+                  </div>
+                ) : dashboardPath ? (
+                  <Link href={dashboardPath} onClick={() => setMobileMenuOpen(false)} className="block rounded-lg border border-border px-3 py-2 text-center text-sm hover:bg-accent">Dashboard</Link>
+                ) : null}
+                <button onClick={handleSignOut} className="w-full rounded-lg border border-red-200 px-3 py-2 text-sm text-red-600 hover:bg-red-50">Sign out</button>
+              </div>
+            ) : !loadingUser ? (
+              <div className="flex gap-3 border-t border-border pt-4">
+                <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="flex-1 py-2 text-center">Sign in</Link>
+                <Link href="/signup" onClick={() => setMobileMenuOpen(false)} className="flex-1 rounded-lg border border-primary px-4 py-2 text-center text-primary">Join us</Link>
+              </div>
+            ) : null)}
           </div>
         </div>
       )}

@@ -46,9 +46,10 @@ function formatRequestDate(
 
 interface PatientRequestsProps {
   onOpenMessages?: (requestId: string) => void;
+  onViewDetails?: (requestId: string) => void;
 }
 
-export default function PatientRequests({ onOpenMessages }: PatientRequestsProps) {
+export default function PatientRequests({ onOpenMessages, onViewDetails }: PatientRequestsProps) {
   const [requests, setRequests] = useState<RequestBooking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -403,6 +404,7 @@ export default function PatientRequests({ onOpenMessages }: PatientRequestsProps
               key={request.id}
               booking={request}
               onOpenMessages={onOpenMessages}
+              onViewDetails={onViewDetails}
             />
           ))}
 

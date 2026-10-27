@@ -1,295 +1,118 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSearchParams } from "next/navigation";
-import { Calendar, FileText, LayoutDashboard, MessageSquare, ReceiptText, User } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
-import PatientDocuments from "../../components/dashboard/patient/PatientDocuments";
-import PatientProfile from "../../components/dashboard/patient/PatientProfile";
+import PatientDocuments from "@/app/components/dashboard/patient/PatientDocuments";
+import PatientProfile from "@/app/components/dashboard/patient/PatientProfile";
 import PatientRequests from "@/app/components/dashboard/patient/PatientRequests";
 import PatientInvoices from "@/app/components/dashboard/patient/PatientInvoices";
 import PatientBookingOverview from "@/app/components/dashboard/patient/PatientBookingOverview";
 import PatientMessages from "@/app/components/dashboard/patient/PatientMessages";
+import PatientRequestDetails from "@/app/components/dashboard/patient/PatientRequestDetails";
+// Importe ton futur composant de détails ici (crée-le dans le même dossier)
+// import PatientRequestDetails from "@/app/components/dashboard/patient/PatientRequestDetails";
 
-type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" | "messages";
-
-type Profile = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  gender: string;
-  phone: string;
-};
-
-const tabs = [
-  { id: "overview" as const, label: "Overview", icon: LayoutDashboard },
-  { id: "consultations" as const, label: "My consultations", icon: Calendar },
-  { id: "messages" as const, label: "Messages", icon: MessageSquare },
-  { id: "invoices" as const, label: "Invoices", icon: ReceiptText },
-  { id: "profile" as const, label: "Profile", icon: User },
-  { id: "documents" as const, label: "Documents", icon: FileText },
-];
+type Tab = "overview" | "consultations" | "invoices" | "profile" | "documents" | "messages" | "details";
+type Profile = { firstName: string; lastName: string; email: string; gender: string; phone: string };
+const validTabs: Tab[] = ["overview", "consultations", "invoices", "profile", "documents", "messages", "details"];
 
 export default function PatientDashboard() {
   const supabase = createClient();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const requestIdParam = searchParams.get("requestId");
+  const tabParam = searchParams.get("tab");
+  const requestId = searchParams.get("requestId");
+  const detailsId = searchParams.get("id");
 
-  const [activeTab, setActiveTab] = useState<Tab>(requestIdParam ? "messages" : "overview");
-  const [selectedRequestId, setSelectedRequestId] = useState<string | null>(requestIdParam);
+  const activeTab: Tab = validTabs.includes(tabParam as Tab)
+    ? (tabParam as Tab)
+    : requestId ? "messages" : "overview";
 
-  const handleOpenMessages = (requestId: string) => {
-    setSelectedRequestId(requestId);
-    setActiveTab("messages");
-  };
-
-  const [profile, setProfile] = useState<Profile>({
-    firstName: "",
-    lastName: "",
-    email: "",
-    gender: "",
-    phone: "",
-  });
-
+  const [profile, setProfile] = useState<Profile>({ firstName: "", lastName: "", email: "", gender: "", phone: "" });
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileError, setProfileError] = useState("");
 
   useEffect(() => {
-    const loadPatientProfile = async () => {
+    let cancelled = false;
+    const loadProfile = async () => {
       setProfileLoading(true);
       setProfileError("");
-
       try {
-        // 1. Get currently signed-in user
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser();
-
-        if (userError) {
-          throw userError;
-        }
-
-        if (!user) {
-          setProfileError("Please sign in to view your profile.");
-          return;
-        }
-
-        // 2. Get the profile belonging to this auth user
-        const {
-          data: profileRow,
-          error: profileError,
-        } = await supabase
-          .from("profiles")
-          .select("id")
-          .eq("user_id", user.id)
-          .single();
-
-        if (profileError || !profileRow) {
-          console.error("Failed to load profile:", profileError);
-          setProfileError("We could not find your profile.");
-          return;
-        }
-
-        // 3. Get patient using profiles.id
-        const {
-          data: patient,
-          error: patientError,
-        } = await supabase
-          .from("patients")
-          .select(
-            "first_name, last_name, gender, phone"
-          )
-          .eq("profile_id", profileRow.id)
-          .maybeSingle();
-
-        if (patientError) {
-          console.error("Failed to load patient:", patientError);
-          setProfileError(
-            "We could not load your patient information."
-          );
-          return;
-        }
-
-        if (!patient) {
-          setProfileError(
-            "No patient record is linked to your account."
-          );
-          return;
-        }
-
-        // 4. Put database data into React state
-        setProfile({
-          firstName: patient.first_name ?? "",
-          lastName: patient.last_name ?? "",
-          email: user.email ?? "",
-          gender: patient.gender ?? "",
-          phone: patient.phone ?? "",
-        });
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("Please sign in to view your profile.");
+        const { data: profileRow, error: profileError } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+        if (profileError || !profileRow) throw new Error("We could not find your profile.");
+        const { data: patient, error: patientError } = await supabase.from("patients").select("first_name, last_name, gender, phone").eq("profile_id", profileRow.id).maybeSingle();
+        if (patientError) throw patientError;
+        if (!patient) throw new Error("No patient record is linked to your account.");
+        if (!cancelled) setProfile({ firstName: patient.first_name ?? "", lastName: patient.last_name ?? "", email: user.email ?? "", gender: patient.gender ?? "", phone: patient.phone ?? "" });
       } catch (error) {
-        console.error("Failed to load patient profile:", error);
-
-        setProfileError(
-          error instanceof Error
-            ? error.message
-            : "We could not load your patient information."
-        );
+        if (!cancelled) setProfileError(error instanceof Error ? error.message : "We could not load your patient information.");
       } finally {
-        setProfileLoading(false);
+        if (!cancelled) setProfileLoading(false);
       }
     };
-
-    loadPatientProfile();
+    void loadProfile();
+    return () => { cancelled = true; };
   }, [supabase]);
 
-  const savePatientProfile = async (nextProfile: Profile) => {
-    // 1. Get authenticated user
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError) {
-      throw userError;
-    }
-
-    if (!user) {
-      throw new Error("Please sign in to update your profile.");
-    }
-
-    // 2. Get profiles.id
-    const {
-      data: profileRow,
-      error: profileError,
-    } = await supabase
-      .from("profiles")
-      .select("id")
-      .eq("user_id", user.id)
-      .single();
-
-    if (profileError || !profileRow) {
-      throw new Error(
-        "We could not find your patient profile."
-      );
-    }
-
-    // 3. Update patient's row
-    const { error: updateError } = await supabase
-      .from("patients")
-      .update({
-        first_name: nextProfile.firstName.trim(),
-        last_name: nextProfile.lastName.trim(),
-        gender: nextProfile.gender || null,
-        phone: nextProfile.phone || null,
-      })
-      .eq("profile_id", profileRow.id);
-
-    if (updateError) {
-      console.error("Failed to update patient:", updateError);
-      throw new Error(
-        "We could not save your profile. Please try again."
-      );
-    }
-
-    // 4. Update local state immediately
-    setProfile({
-      ...nextProfile,
-      email: user.email ?? nextProfile.email,
-    });
+  const savePatientProfile = async (next: Profile) => {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) throw userError;
+    if (!user) throw new Error("Please sign in to update your profile.");
+    const { data: profileRow, error: profileError } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
+    if (profileError || !profileRow) throw new Error("We could not find your patient profile.");
+    const { error } = await supabase.from("patients").update({ first_name: next.firstName.trim(), last_name: next.lastName.trim(), gender: next.gender || null, phone: next.phone || null }).eq("profile_id", profileRow.id);
+    if (error) throw new Error("We could not save your profile. Please try again.");
+    setProfile({ ...next, email: user.email ?? next.email });
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="bg-primary px-4 py-8 text-primary-foreground">
-        <div className="mx-auto max-w-7xl">
-          <h1 className="text-3xl font-bold">
-            Patient Dashboard
-          </h1>
+    <main className="min-h-[calc(100vh-4rem)] bg-background px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-7xl">
+        <h1 className="mb-6 text-2xl font-bold">Patient dashboard</h1>
+        
+        {activeTab === "overview" && <PatientBookingOverview />}
+        
+        {activeTab === "consultations" && (
+          <PatientRequests 
+            onOpenMessages={(id) => router.push(`/dashboard/patient?tab=messages&requestId=${encodeURIComponent(id)}`)}
+            onViewDetails={(id) => router.push(`/dashboard/patient?tab=details&id=${encodeURIComponent(id)}`)}
+          />
+        )}
 
-          <p className="mt-2 text-primary-foreground/80">
-            Welcome back
-            {[profile.firstName, profile.lastName].filter(Boolean).length > 0
-              ? `, ${[profile.firstName, profile.lastName].filter(Boolean).join(" ")}`
-              : ""}!
-          </p>
-        </div>
-      </div>
-
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="flex gap-8">
-          {/* Sidebar */}
-          <aside className="w-64 shrink-0">
-            <div className="sticky top-24 rounded-lg border border-border bg-card p-4">
-              <nav className="space-y-2">
-                {tabs.map(
-                  ({ id, label, icon: Icon }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setActiveTab(id)}
-                      className={`flex w-full items-center gap-3 rounded-lg px-4 py-3 transition-colors ${
-                        activeTab === id
-                          ? "bg-primary text-primary-foreground"
-                          : "text-foreground hover:bg-accent"
-                      }`}
-                    >
-                      <Icon size={20} />
-                      {label}
-                    </button>
-                  )
-                )}
-              </nav>
+        {activeTab === "messages" && <PatientMessages initialRequestId={requestId} />}
+        
+        {activeTab === "invoices" && <PatientInvoices />}
+        
+        {activeTab === "documents" && <PatientDocuments />}
+        
+        {activeTab === "details" && (
+          <div>
+            <button 
+              onClick={() => router.push("/dashboard/patient?tab=consultations")} 
+              className="mb-4 text-sm text-primary underline hover:opacity-80"
+            >
+              &larr; Back to consultations
+            </button>
+            <div className="rounded-lg border border-border bg-card p-6 shadow-sm">
+              <PatientRequestDetails requestId={detailsId} />
             </div>
-          </aside>
-
-          {/* Content */}
-          <div className="min-w-0 flex-1">
-            {activeTab === "overview" && <PatientBookingOverview />}
-
-            {activeTab === "consultations" && (
-              <PatientRequests onOpenMessages={handleOpenMessages} />
-            )}
-
-            {activeTab === "messages" && (
-              <PatientMessages initialRequestId={selectedRequestId} />
-            )}
-
-            {activeTab === "invoices" && <PatientInvoices />}
-
-            {activeTab === "profile" && (
-              <>
-                {profileLoading && (
-                  <p className="text-muted-foreground">
-                    Loading your profile...
-                  </p>
-                )}
-
-                {!profileLoading && profileError && (
-                  <p
-                    role="alert"
-                    className="text-destructive"
-                  >
-                    {profileError}
-                  </p>
-                )}
-
-                {!profileLoading && !profileError && (
-                  <PatientProfile
-                    profile={profile}
-                    onChange={setProfile}
-                    onSave={savePatientProfile}
-                  />
-                )}
-              </>
-            )}
-
-            {activeTab === "documents" && (
-              <PatientDocuments />
-            )}
           </div>
-        </div>
-      </main>
-    </div>
+        )}
+
+        {activeTab === "profile" && (
+          profileLoading ? (
+            <p className="text-muted-foreground">Loading your profile...</p>
+          ) : profileError ? (
+            <p role="alert" className="text-destructive">{profileError}</p>
+          ) : (
+            <PatientProfile profile={profile} onChange={setProfile} onSave={savePatientProfile} />
+          )
+        )}
+      </div>
+    </main>
   );
 }

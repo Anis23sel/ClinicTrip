@@ -90,7 +90,6 @@ export async function POST(request: Request) {
           `
             id,
             id_clinic,
-            inquiry_completed,
             clinic_decision,
             final_start_date,
             final_end_date
@@ -113,21 +112,7 @@ export async function POST(request: Request) {
     }
 
     // --------------------------------------------------
-    // 5. Make sure inquiry is completed
-    // --------------------------------------------------
-
-    if (!patientRequest.inquiry_completed) {
-      return NextResponse.json(
-        {
-          error:
-            "The inquiry must be completed before accepting the request.",
-        },
-        { status: 400 }
-      );
-    }
-
-    // --------------------------------------------------
-    // 6. Make sure final dates are set
+    // 5. Make sure final dates are set
     // --------------------------------------------------
 
     if (

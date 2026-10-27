@@ -1,15 +1,14 @@
 "use client";
 
 import React, { JSX, useState } from "react";
-import Link from "next/link";
 import {
   CheckCircle,
   XCircle,
   Clock,
   MessageSquare,
 } from "lucide-react";
-import AccommodationTab from "../booking/AccommodationTab";
-import TransferTab from "../booking/TransferTab";
+// import AccommodationTab from "../booking/AccommodationTab";
+// import TransferTab from "../booking/TransferTab";
 import BookingInquiryModal from "../booking/BookingInquiryModal";
 import { createClient } from "@/app/utils/supabase/client";
 
@@ -65,6 +64,7 @@ type Booking = {
 interface Props {
   booking: Booking;
   onOpenMessages?: (requestId: string) => void;
+  onViewDetails?: (requestId: string) => void; // <--- Ajouté ici
 }
 
 const statusConfig: Record<
@@ -98,9 +98,10 @@ const statusConfig: Record<
 export default function BookingCard({
   booking,
   onOpenMessages,
+  onViewDetails,
 }: Props) {
-  const [expanded, setExpanded] =
-    useState(false);
+  // Manage Booking is temporarily disabled.
+  // const [expanded, setExpanded] = useState(false);
 
   const [inquiryOpen, setInquiryOpen] =
     useState(false);
@@ -117,6 +118,7 @@ export default function BookingCard({
   const [accepting, setAccepting] =
     useState(false);
 
+  /* Manage Booking sample accommodation data, kept for later reactivation.
   const sampleAccommodations = [
     {
       id: "1",
@@ -169,6 +171,7 @@ export default function BookingCard({
       nights: 1,
       transferPackage: false,
     });
+  */
 
   // --------------------------------------------------
   // Cancel request
@@ -431,12 +434,17 @@ export default function BookingCard({
         {/* Buttons */}
 
         <div className="flex gap-3">
-          <Link
-            href={`/bookings/${booking.id}`}
+          <button
+            type="button"
+            onClick={() => {
+              if (onViewDetails) {
+                onViewDetails(String(booking.id));
+              }
+            }}
             className="px-4 py-2 border border-border rounded-lg hover:bg-accent transition-colors"
           >
             View Details
-          </Link>
+          </button>
 
           {booking.status === "pending" &&
             !inquiryCompleted && (
@@ -500,8 +508,7 @@ export default function BookingCard({
           )}
         </div>
 
-        {/* Manage Booking */}
-
+        {/* Manage Booking temporarily disabled
         {booking.clinicDecision &&
           patientDecision && (
             <div className="mt-4">
@@ -518,8 +525,6 @@ export default function BookingCard({
 
               {expanded && (
                 <div className="mt-3 space-y-4">
-                  {/* Accommodation */}
-
                   <div className="border border-border rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-3">
                       <div className="rounded-full bg-primary/10 w-8 h-8 flex items-center justify-center font-semibold">
@@ -543,8 +548,6 @@ export default function BookingCard({
                       }
                     />
                   </div>
-
-                  {/* Transfer */}
 
                   <div className="border border-border rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-3">
@@ -570,6 +573,7 @@ export default function BookingCard({
               )}
             </div>
           )}
+        */}
       </div>
     </>
   );

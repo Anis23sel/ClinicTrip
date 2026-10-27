@@ -142,7 +142,7 @@ export default function BookingDetails({
           Contact Patient
         </button>
 
-        {booking.inquiryCompleted && !booking.clinicDecision && (
+        {!booking.clinicDecision && (
           <button type="button" onClick={onAccept} disabled={accepting} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
             {accepting ? "Accepting..." : "Accept consultation"}
           </button>
