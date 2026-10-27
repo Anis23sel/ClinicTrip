@@ -5,6 +5,11 @@ export interface Surgery {
   group: string;
 }
 
+export interface MedicalDomainFilter {
+  id: string;
+  name: string;
+}
+
 export interface DoctorResult {
   id: string | number;
   name: string;
@@ -21,6 +26,7 @@ export interface ClinicResult {
   rating: number | null;
   reviewCount?: number;
   procedures: string[];
+  domainIds: string[];
   doctors: DoctorResult[];
   startingPrice: number;
 }

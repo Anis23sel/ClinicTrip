@@ -16,7 +16,11 @@ export default function SearchProcedureFilter({ selected, category, surgeries, o
 
   return (
     <div className="space-y-4">
-      {groups.map((group) => (
+      {filtered.length === 0 ? (
+        <p className="px-2 py-1 text-sm text-muted-foreground">
+          No procedures are currently offered by clinics in this category.
+        </p>
+      ) : groups.map((group) => (
         <div key={group}>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{group}</p>
           <div className="space-y-1">

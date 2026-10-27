@@ -30,6 +30,16 @@ interface SearchLocationSelectorProps {
   onCityChange: (city: string) => void;
 }
 
+function normalizeCitySearch(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ı/g, "i")
+    .trim()
+    .replace(/\s+/g, " ")
+    .toLocaleLowerCase();
+}
+
 export default function SearchLocationSelector({
   city,
   cities,
@@ -45,19 +55,12 @@ export default function SearchLocationSelector({
     useCallback(() => setOpenCity(false), [])
   );
 
-  /*
-   * Show only 4 cities initially.
-   *
-   * When the user starts typing, search through
-   * the complete list of available cities.
-   */
-  const filteredCities = citySearch.trim()
+  const normalizedCitySearch = normalizeCitySearch(citySearch);
+  const filteredCities = normalizedCitySearch
     ? cities.filter((cityOption) =>
-        cityOption
-          .toLowerCase()
-          .includes(citySearch.trim().toLowerCase())
+        normalizeCitySearch(cityOption).includes(normalizedCitySearch)
       )
-    : cities.slice(0, 4);
+    : cities;
 
   const handleCitySelect = (selectedCity: string) => {
     onCityChange(selectedCity);
@@ -136,13 +139,15 @@ export default function SearchLocationSelector({
 
             {/* All cities */}
 
-            {!citySearch.trim() && (
+            {!normalizedCitySearch && (
               <button
                 type="button"
                 onClick={() => handleCitySelect("")}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors text-muted-foreground"
+                className={`w-full border-b border-border px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+                  city ? "text-muted-foreground" : "bg-primary/10 font-medium text-primary"
+                }`}
               >
-                
+                All cities
               </button>
             )}
 

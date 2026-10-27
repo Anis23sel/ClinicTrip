@@ -9,12 +9,14 @@ export default function FinalDateRangePicker({
   onChange,
   disabled,
   title = "Final procedure dates",
+  inline = false,
 }: {
   startDate: string;
   endDate: string;
   onChange: (range: { startDate: string; endDate: string }) => void;
   disabled?: boolean;
   title?: string;
+  inline?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -31,6 +33,7 @@ export default function FinalDateRangePicker({
   const closePicker = useCallback(() => setOpen(false), []);
 
   useEffect(() => {
+    if (inline) return;
     const handler = (event: MouseEvent) => {
       if (ref.current && !ref.current.contains(event.target as Node)) {
         closePicker();
@@ -39,7 +42,7 @@ export default function FinalDateRangePicker({
 
     document.addEventListener("mousedown", handler);
     return () => document.removeEventListener("mousedown", handler);
-  }, [closePicker]);
+  }, [closePicker, inline]);
 
   const handleOpen = () => {
     if (disabled) return;
@@ -101,8 +104,8 @@ export default function FinalDateRangePicker({
     date.getFullYear() === currentMonth.getFullYear();
 
   return (
-    <div className="relative" ref={ref}>
-      <button
+    <div className={inline ? "w-full" : "relative"} ref={ref}>
+      {!inline && <button
         type="button"
         disabled={disabled}
         onClick={handleOpen}
@@ -111,10 +114,59 @@ export default function FinalDateRangePicker({
         <Calendar size={16} className="shrink-0 text-muted-foreground" />
         <span className={startDate ? "" : "text-muted-foreground"}>{label}</span>
         <ChevronDown size={14} className="ml-auto text-muted-foreground" />
-      </button>
+      </button>}
 
-      {open && (
-        <div className="absolute left-0 top-full z-30 mt-1 w-[320px] rounded-xl border border-border bg-card p-4 shadow-xl">
+      {inline && <div className="w-full">
+        <p className="mb-3 text-sm font-medium text-foreground">Dates</p>
+        <div className="rounded-xl border border-border bg-card p-4 sm:p-5">
+          <div className="mb-4 grid grid-cols-2 items-center gap-3 pr-16 sm:pr-20">
+            {[0, 1].map((monthOffset) => {
+              const month = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthOffset, 1);
+              return <p key={monthOffset} className="text-sm font-semibold text-foreground sm:text-lg">
+                {month.toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+              </p>;
+            })}
+          </div>
+          <div className="relative">
+            <div className="absolute -top-12 right-0 flex items-center gap-2 sm:-top-[3.25rem]">
+              <button
+                type="button"
+                onClick={previousMonth}
+                disabled={currentMonth.getFullYear() === today.getFullYear() && currentMonth.getMonth() === today.getMonth()}
+                aria-label="Previous month"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
+              ><span className="text-2xl leading-none">‹</span></button>
+              <button
+                type="button"
+                onClick={nextMonth}
+                aria-label="Next month"
+                className="flex h-8 w-8 items-center justify-center rounded-md text-foreground hover:bg-accent"
+              ><span className="text-2xl leading-none">›</span></button>
+            </div>
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-6">
+              {[0, 1].map((monthOffset) => {
+                const month = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + monthOffset, 1);
+                return <CalendarMonth
+                  key={`${month.getFullYear()}-${month.getMonth()}`}
+                  month={month}
+                  startDate={startDate}
+                  endDate={endDate}
+                  todayString={todayString}
+                  onDateClick={handleDateClick}
+                />;
+              })}
+            </div>
+          </div>
+          <div className="mt-4 border-t border-border pt-3">
+            <DateSummary label="From" value={startDate} />
+            <DateSummary label="To" value={endDate} />
+          </div>
+          {(startDate || endDate) && <button type="button" onClick={handleClear} className="mt-3 text-xs text-muted-foreground hover:text-destructive">Clear dates</button>}
+        </div>
+      </div>}
+
+      {!inline && open && (
+        <div className={inline ? "w-full max-w-[380px] rounded-xl border border-border bg-card p-4" : "absolute left-0 top-full z-30 mt-1 w-[320px] rounded-xl border border-border bg-card p-4 shadow-xl"}>
           <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             {title}
           </p>
@@ -126,7 +178,7 @@ export default function FinalDateRangePicker({
                 currentMonth.getFullYear() === today.getFullYear() &&
                 currentMonth.getMonth() === today.getMonth()
               }
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30"
             >
               <span className="text-lg">&#8249;</span>
             </button>
@@ -139,7 +191,7 @@ export default function FinalDateRangePicker({
             <button
               type="button"
               onClick={nextMonth}
-              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-muted hover:text-foreground"
+              className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
             >
               <span className="text-lg">&#8250;</span>
             </button>
@@ -168,7 +220,7 @@ export default function FinalDateRangePicker({
                   type="button"
                   disabled={past || !current}
                   onClick={() => handleDateClick(date)}
-                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-primary/10 text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-muted" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
+                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-primary/10 text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
                 >
                   {date.getDate()}
                 </button>
@@ -200,6 +252,47 @@ function DateSummary({ label, value }: { label: string; value: string }) {
   );
 }
 
+function CalendarMonth({
+  month,
+  startDate,
+  endDate,
+  todayString,
+  onDateClick,
+}: {
+  month: Date;
+  startDate: string;
+  endDate: string;
+  todayString: string;
+  onDateClick: (date: Date) => void;
+}) {
+  const days = getCalendarDays(month);
+  const isCurrentMonth = (date: Date) => date.getMonth() === month.getMonth() && date.getFullYear() === month.getFullYear();
+
+  return <div>
+    <div className="mb-2 grid grid-cols-7">
+      {["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"].map((day) => <div key={day} className="py-1 text-center text-xs text-muted-foreground">{day}</div>)}
+    </div>
+    <div className="grid grid-cols-7 gap-y-1">
+      {days.map((date, index) => {
+        const dateString = formatDate(date);
+        const current = isCurrentMonth(date);
+        const past = dateString < todayString;
+        const isStart = dateString === startDate;
+        const isEnd = dateString === endDate;
+        const inRange = !!startDate && !!endDate && dateString > startDate && dateString < endDate;
+        const isToday = dateString === todayString;
+        return <button
+          key={`${dateString}-${index}`}
+          type="button"
+          disabled={past || !current}
+          onClick={() => onDateClick(date)}
+          className={`relative flex h-9 items-center justify-center text-sm transition-colors sm:h-10 ${!current || past ? "text-muted-foreground/40" : "text-foreground"} ${inRange ? "bg-primary/10" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
+        >{date.getDate()}</button>;
+      })}
+    </div>
+  </div>;
+}
+
 function formatDate(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
@@ -223,7 +316,7 @@ function getCalendarDays(month: Date) {
   for (let day = 1; day <= daysInMonth; day++) {
     days.push(new Date(year, monthIndex, day));
   }
-  for (let day = 1; days.length < 42; day++) {
+  for (let day = 1; days.length % 7 !== 0; day++) {
     days.push(new Date(year, monthIndex + 1, day));
   }
   return days;

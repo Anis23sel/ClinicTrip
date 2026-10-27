@@ -1,17 +1,38 @@
-import type { CSSProperties } from "react";
-import { DayPicker, type DateRange } from "react-day-picker";
+"use client";
 
-interface ClinicDatePickerProps { dateRange: DateRange | undefined; onChange: (range: DateRange | undefined) => void; }
+import FinalDateRangePicker from "@/app/components/dashboard/clinic/FinalDateRangePicker";
+import type { DateRange } from "react-day-picker";
+
+interface ClinicDatePickerProps {
+  dateRange: DateRange | undefined;
+  onChange: (range: DateRange | undefined) => void;
+}
+
+function toDateString(date: Date | undefined) {
+  if (!date) return "";
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function fromDateString(value: string) {
+  if (!value) return undefined;
+  const [year, month, day] = value.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
 
 export default function ClinicDatePicker({ dateRange, onChange }: ClinicDatePickerProps) {
   return (
-    <section className="space-y-4">
+    <section className="space-y-2">
       <label className="block text-sm font-medium">Dates</label>
-      <div className="rounded-lg border border-border bg-input-background p-3 sm:p-4">
-        <div className="overflow-x-auto">
-          <DayPicker mode="range" selected={dateRange} onSelect={onChange} disabled={{ before: new Date() }} numberOfMonths={2} pagedNavigation captionLayout="dropdown" className="clinic-calendar mx-auto" style={{ "--rdp-accent-color": "#391419", "--rdp-accent-background-color": "rgba(57, 20, 25, 0.12)", "--rdp-range_start-color": "#ffffff", "--rdp-range_end-color": "#ffffff", "--rdp-range_middle-color": "#391419", "--rdp-range_middle-background-color": "rgba(57, 20, 25, 0.12)", "--rdp-selected-border": "1px solid #391419" } as CSSProperties} styles={{ months: { display: "flex", flexDirection: "row", gap: "1.5rem", justifyContent: "center", alignItems: "flex-start" }, month: { margin: 0 } }} modifiersStyles={{ range_start: { backgroundColor: "#391419", color: "#ffffff", borderRadius: "9999px" }, range_end: { backgroundColor: "#391419", color: "#ffffff", borderRadius: "9999px" }, range_middle: { backgroundColor: "rgba(57, 20, 25, 0.12)", color: "#391419", borderRadius: 0 }, selected: { backgroundColor: "#391419", color: "#ffffff", borderRadius: "9999px" } }} />
-        </div>
-      </div>
+      <FinalDateRangePicker
+        startDate={toDateString(dateRange?.from)}
+        endDate={toDateString(dateRange?.to)}
+        onChange={({ startDate, endDate }) => {
+          const from = fromDateString(startDate);
+          const to = fromDateString(endDate);
+          onChange(from || to ? { from, to } : undefined);
+        }}
+        title="Travel window"
+      />
     </section>
   );
 }

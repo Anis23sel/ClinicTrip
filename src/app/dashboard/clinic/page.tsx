@@ -181,6 +181,32 @@ export default function ClinicDashboard() {
     }]);
   };
 
+  const updateProcedure = async (clinicProcedureId: string, startingPrice: number) => {
+    const response = await fetch('/api/clinic/procedures', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinicProcedureId, startingPrice }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'The procedure could not be updated.');
+
+    setProcedures((current) => current.map((procedure) => procedure.id === clinicProcedureId
+      ? { ...procedure, starting_price: result.procedure.starting_price }
+      : procedure));
+  };
+
+  const deleteProcedure = async (clinicProcedureId: string) => {
+    const response = await fetch('/api/clinic/procedures', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clinicProcedureId }),
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || 'The procedure could not be removed.');
+
+    setProcedures((current) => current.filter((procedure) => procedure.id !== clinicProcedureId));
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-primary px-4 py-8 text-primary-foreground">
@@ -211,7 +237,7 @@ export default function ClinicDashboard() {
             {!loading && !error && activeTab === 'overview' && clinic && <ClinicOverview clinicName={clinic.clinic_name} bookings={bookings} onNavigate={setActiveTab} />}
             {!loading && !error && activeTab === 'profile' && clinic && <ClinicProfile clinic={clinic} onSave={updateClinic} />}
             {activeTab === 'doctors' && <ClinicDoctors />}
-            {!loading && !error && activeTab === 'procedures' && <ClinicProcedures procedures={procedures} procedureOptions={medicalProcedures} onAddProcedure={addProcedure} />}
+            {!loading && !error && activeTab === 'procedures' && <ClinicProcedures procedures={procedures} procedureOptions={medicalProcedures} onAddProcedure={addProcedure} onUpdateProcedure={updateProcedure} onDeleteProcedure={deleteProcedure} />}
             {activeTab === 'accommodations' && <ClinicAccommodations />}
             {!loading && !error && activeTab === 'gallery' && clinic && <ClinicGalleryManager clinicId={clinic.id} />}
             {!loading && !error && activeTab === 'bookings' && clinic && (

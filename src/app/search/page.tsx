@@ -1,23 +1,37 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors } from "lucide-react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Eye, Scale, Stethoscope, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
 import SearchLocationSelector from "../components/search/SearchLocationSelector";
 import SearchProcedureFilter from "../components/search/SearchProcedureFilter";
 import ClinicResultCard from "../components/search/ClinicResultCard";
-import { getBodyPartProcedures, getProcedureCategory, normalizeText, type ClinicImageResult, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicImage, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type DateRange, type DoctorResult, type Surgery } from "../components/search/searchTypes";
+import { usePatientFavorites } from "../components/search/usePatientFavorites";
+import { getBodyPartProcedures, normalizeText, type ClinicImageResult, type ClinicResult, type DatabaseCategory, type DatabaseCity, type DatabaseClinic, type DatabaseClinicImage, type DatabaseClinicProcedure, type DatabaseDoctor, type DatabaseDoctorProcedure, type DatabaseDomain, type DatabaseProcedure, type DatabaseSpeciality, type DateRange, type DoctorResult, type MedicalDomainFilter, type Surgery } from "../components/search/searchTypes";
 
 const supabase = createClient();
+
+function getDomainIcon(domainName: string): LucideIcon {
+  const name = domainName.toLowerCase();
+  if (name.includes("plastic")) return Sparkles;
+  if (name.includes("dental")) return Smile;
+  if (name.includes("hair")) return Scissors;
+  if (name.includes("bariatric")) return Scale;
+  if (name.includes("eye")) return Eye;
+  return Stethoscope;
+}
 
 // ── Main Search Page ──────────────────────────────────────────────────────────
 
 function SearchContent() {
   const searchParams = useSearchParams();
+  const requestedCategory = searchParams.get("category");
+  const { isPatient, favoriteClinicIds, pendingClinicIds, loading: favoritesLoading, error: favoritesError, toggleFavorite } = usePatientFavorites();
   const [clinics, setClinics] = useState<ClinicResult[]>([]);
   const [surgeries, setSurgeries] = useState<Surgery[]>([]);
+  const [availableDomains, setAvailableDomains] = useState<MedicalDomainFilter[]>([]);
   const [availableCities, setAvailableCities] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState("");
@@ -29,7 +43,7 @@ function SearchContent() {
   const [filters, setFilters] = useState({
     priceRange: [0, 10000],
     rating: 0,
-    category: searchParams.get("category") || "",
+    category: "",
     surgeryTypes: [] as string[],
     sortBy: "popularity",
   });
@@ -173,6 +187,15 @@ function SearchContent() {
           images: clinicImagesByClinic.get(String(clinic.id)) || [],
           rating: rating,
           procedures: [...new Set(procedureNames)],
+          domainIds: [...new Set(clinicProcedures.flatMap((clinicProcedure) => {
+            const procedure = procedureById.get(String(clinicProcedure.procedure_id));
+            const category = procedure?.category_id === null || procedure?.category_id === undefined
+              ? undefined
+              : categoryById.get(String(procedure.category_id));
+            return category?.domain_id === null || category?.domain_id === undefined
+              ? []
+              : [String(category.domain_id)];
+          }))],
           doctors: doctorsByClinic.get(String(clinic.id)) || [],
           startingPrice: prices.length ? Math.min(...prices) : 0,
           reviewCount: reviewCount,
@@ -198,19 +221,40 @@ function SearchContent() {
           return {
             name: procedure.name,
             price: prices.length ? Math.min(...prices) : 0,
-            category: getProcedureCategory(`${domain?.name || ""} ${category?.name || ""} ${procedure.name}`),
+            category: domain ? String(domain.id) : "",
             group: domain?.name || category?.name || "Other",
           };
         });
 
+      const availableDomainFilters = domainRows
+        .map((domain) => ({ id: String(domain.id), name: domain.name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+      if (requestedCategory) {
+        const normalizedParam = requestedCategory.toLowerCase().replace(/[^a-z0-9]/g, "");
+        const matchingDomain = availableDomainFilters.find((domain) => {
+          const normalizedName = domain.name.toLowerCase().replace(/[^a-z0-9]/g, "");
+          return normalizedName === normalizedParam ||
+            normalizedName.startsWith(normalizedParam) ||
+            normalizedParam.startsWith(normalizedName);
+        });
+        setFilters((current) => ({ ...current, category: matchingDomain?.id || "" }));
+      } else {
+        setFilters((current) => current.category ? { ...current, category: "" } : current);
+      }
+
       setClinics(clinicResultsData);
       setSurgeries(surgeryData);
-      setAvailableCities([...new Set(cityRows.map((row) => row.city))]);
+      setAvailableDomains(availableDomainFilters);
+      const clinicCities = clinicResultsData
+        .map((clinic) => clinic.city.trim())
+        .filter(Boolean);
+      setAvailableCities([...new Set(clinicCities)].sort((a, b) => a.localeCompare(b, "tr")));
       setLoading(false);
     };
 
     loadSearchData();
-  }, []);
+  }, [requestedCategory]);
 
   const removeSurgery = (s: string) =>
     setFilters((current) => ({
@@ -242,7 +286,7 @@ function SearchContent() {
 
     if (filters.category) {
       filtered = filtered.filter((clinic) =>
-        clinic.procedures.some((procedure) => getProcedureCategory(procedure) === filters.category)
+        clinic.domainIds.includes(filters.category)
       );
     }
 
@@ -356,9 +400,11 @@ function SearchContent() {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { value: "", label: "All", icon: LayoutGrid },
-                        { value: "plastic-surgery", label: "Plastic", icon: Sparkles },
-                        { value: "dental", label: "Dental", icon: Smile },
-                        { value: "hair-transplant", label: "Hair", icon: Scissors },
+                        ...availableDomains.map((domain) => ({
+                          value: domain.id,
+                          label: domain.name,
+                          icon: getDomainIcon(domain.name),
+                        })),
                       ].map(({ value, label, icon: Icon }) => (
                         <button
                           key={value}
@@ -452,6 +498,11 @@ function SearchContent() {
             </div>
 
             <div className="grid gap-5">
+              {favoritesError && (
+                <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive">
+                  Saved clinics could not be updated. Please try again.
+                </p>
+              )}
               {loading ? (
                 // PROFESSIONAL SKELETON LOADER FOR CLINICS
                 <div className="space-y-4">
@@ -488,6 +539,11 @@ function SearchContent() {
                     <ClinicResultCard
                       key={clinic.id}
                       clinic={clinic}
+                      isFavorite={favoriteClinicIds.has(String(clinic.id))}
+                      isFavoritePending={pendingClinicIds.has(String(clinic.id))}
+                      isCheckingFavoriteAccess={favoritesLoading}
+                      isPatient={isPatient}
+                      onToggleFavorite={() => void toggleFavorite(clinic.id)}
                       selectedProcedures={filters.surgeryTypes.filter((selectedSurgery) =>
                         clinic.procedures.some((procedure) =>
                           normalizeText(procedure).includes(normalizeText(selectedSurgery)) ||
