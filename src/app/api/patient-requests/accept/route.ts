@@ -86,7 +86,7 @@ export async function POST(request: Request) {
       await supabase
         .from("Patient_request")
         .select(
-          "id, id_patient, clinic_decision, patient_decision"
+          "id, id_patient, clinic_decision, patient_decision, cancelled_at"
         )
         .eq("id", requestId)
         .single();
@@ -112,6 +112,13 @@ export async function POST(request: Request) {
             "You are not authorized to accept this request.",
         },
         { status: 403 }
+      );
+    }
+
+    if (patientRequest.cancelled_at) {
+      return NextResponse.json(
+        { error: "This consultation has been cancelled." },
+        { status: 409 }
       );
     }
 

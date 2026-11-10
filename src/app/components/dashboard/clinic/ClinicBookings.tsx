@@ -30,6 +30,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
   const [sendError, setSendError] = useState("");
   const [sendSuccess, setSendSuccess] = useState("");
   const [accepting, setAccepting] = useState<string | null>(null);
+  const [cancelling, setCancelling] = useState<string | null>(null);
   const [priceInputs, setPriceInputs] = useState<Record<string, string>>({});
   const [savingPrice, setSavingPrice] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
@@ -65,7 +66,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
       try {
         const { data: rows, error: requestError } = await supabase
           .from("Patient_request")
-          .select("id, id_patient, start_date, end_date, final_start_date, final_end_date, procedure, inquiry_completed, clinic_decision, patient_decision, price")
+          .select("id, id_patient, start_date, end_date, final_start_date, final_end_date, procedure, inquiry_completed, clinic_decision, patient_decision, price, cancelled_at, cancelled_by, clinictrip_paid_at")
           .eq("id_clinic", clinicId)
           .order("created_at", { ascending: false });
         if (requestError) throw requestError;
@@ -98,6 +99,10 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
             clinicDecision: row.clinic_decision ?? false,
             patientDecision: row.patient_decision ?? false,
             price: row.price !== null && row.price !== undefined ? Number(row.price) : null,
+            firstClinicContactAt: null,
+            cancelledAt: row.cancelled_at,
+            cancelledBy: row.cancelled_by,
+            clinicTripPaidAt: row.clinictrip_paid_at,
           };
         }));
       } catch (loadError) {
@@ -245,6 +250,36 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
     }
   };
 
+  const handleCancelRequest = async (booking: Booking) => {
+    if (!window.confirm("Cancel this consultation? It can only be cancelled before payment.")) return;
+
+    setCancelling(booking.id);
+    try {
+      const response = await fetch("/api/patient-requests/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: booking.id }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "We could not cancel this consultation.");
+
+      setBookings((current) => current.map((item) =>
+        item.id === booking.id
+          ? {
+              ...item,
+              cancelledAt: result.request.cancelled_at,
+              cancelledBy: result.request.cancelled_by,
+            }
+          : item
+      ));
+    } catch (cancelError) {
+      console.error("Failed to cancel consultation:", cancelError);
+      alert(cancelError instanceof Error ? cancelError.message : "We could not cancel this consultation.");
+    } finally {
+      setCancelling(null);
+    }
+  };
+
   return (
     <section>
       <h2 className="mb-6 text-2xl font-bold">Consultation Management</h2>
@@ -274,6 +309,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
           savingDates={savingDates === selectedBooking.id}
           savingPrice={savingPrice === selectedBooking.id}
           accepting={accepting === selectedBooking.id}
+          cancelling={cancelling === selectedBooking.id}
           contacting={contact.bookingId === selectedBooking.id}
           sending={sending}
           subject={contact.subject}
@@ -291,6 +327,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
           onSavePrice={() => handleSavePrice(selectedBooking)}
           onContact={() => openContactForm(selectedBooking)}
           onAccept={() => handleAcceptRequest(selectedBooking)}
+          onCancel={() => handleCancelRequest(selectedBooking)}
           onSubjectChange={(subject) => setContact((current) => ({ ...current, subject }))}
           onMessageChange={(message) => setContact((current) => ({ ...current, message }))}
           onCloseContact={closeContactForm}

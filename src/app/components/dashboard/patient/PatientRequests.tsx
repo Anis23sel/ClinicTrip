@@ -14,13 +14,16 @@ type RequestBooking = {
   date: string;
   location: string;
   price: number | null;
-  status: "pending";
+  status: "pending" | "cancelled";
   accommodation: string | null;
   inquiryCompleted: boolean;
   clinicDecision: boolean;
   patientDecision: boolean;
   finalStartDate: string | null;
   finalEndDate: string | null;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  clinicTripPaidAt: string | null;
 };
 
 const supabase = createClient();
@@ -138,7 +141,10 @@ export default function PatientRequests({ onOpenMessages, onViewDetails }: Patie
               clinic_decision,
               patient_decision,
               doctor_id,
-              price
+              price,
+              cancelled_at,
+              cancelled_by,
+              clinictrip_paid_at
             `
           )
           .eq("id_patient", patient.id)
@@ -312,7 +318,7 @@ export default function PatientRequests({ onOpenMessages, onViewDetails }: Patie
                   ? Number(request.price)
                   : null,
 
-              status: "pending",
+              status: request.cancelled_at ? "cancelled" : "pending",
 
               accommodation: null,
 
@@ -327,6 +333,9 @@ export default function PatientRequests({ onOpenMessages, onViewDetails }: Patie
               patientDecision:
                 request.patient_decision ??
                 false,
+              cancelledAt: request.cancelled_at,
+              cancelledBy: request.cancelled_by,
+              clinicTripPaidAt: request.clinictrip_paid_at,
             };
           })
         );

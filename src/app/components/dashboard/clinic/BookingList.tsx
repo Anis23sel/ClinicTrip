@@ -22,7 +22,10 @@ export default function BookingList({
             <div className="min-w-0">
               <div className="mb-1 flex flex-wrap items-center gap-3">
                 <h3 className="text-lg font-semibold">{booking.patientName}</h3>
-                <Status clinicDecision={booking.clinicDecision} />
+                <Status
+                  clinicDecision={booking.clinicDecision}
+                  cancelledAt={booking.cancelledAt}
+                />
               </div>
               <p className="mb-2 text-sm text-muted-foreground">
                 {booking.procedure || "Procedure not specified"}
@@ -48,7 +51,22 @@ export default function BookingList({
   );
 }
 
-export function Status({ clinicDecision }: { clinicDecision: boolean }) {
+export function Status({
+  clinicDecision,
+  cancelledAt,
+}: {
+  clinicDecision: boolean;
+  cancelledAt?: string | null;
+}) {
+  if (cancelledAt) {
+    return (
+      <div className="flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-sm text-red-800">
+        <span aria-hidden="true">×</span>
+        <span>Cancelled</span>
+      </div>
+    );
+  }
+
   return clinicDecision ? (
     <div className="flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-sm text-green-800">
       <span aria-hidden="true">&#10003;</span>

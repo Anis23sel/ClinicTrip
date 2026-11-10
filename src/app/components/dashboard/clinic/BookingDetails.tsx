@@ -10,6 +10,7 @@ type BookingDetailsProps = {
   savingDates: boolean;
   savingPrice: boolean;
   accepting: boolean;
+  cancelling: boolean;
   contacting: boolean;
   sending: boolean;
   subject: string;
@@ -27,6 +28,7 @@ type BookingDetailsProps = {
   onSavePrice: () => void;
   onContact: () => void;
   onAccept: () => void;
+  onCancel: () => void;
   onSubjectChange: (value: string) => void;
   onMessageChange: (value: string) => void;
   onCloseContact: () => void;
@@ -41,6 +43,7 @@ export default function BookingDetails({
   savingDates,
   savingPrice,
   accepting,
+  cancelling,
   contacting,
   sending,
   subject,
@@ -58,6 +61,7 @@ export default function BookingDetails({
   onSavePrice,
   onContact,
   onAccept,
+  onCancel,
   onSubjectChange,
   onMessageChange,
   onCloseContact,
@@ -77,7 +81,7 @@ export default function BookingDetails({
             <h3 className="text-2xl font-bold">{booking.patientName}</h3>
             <p className="mt-1 text-muted-foreground">{booking.procedure || "Procedure not specified"}</p>
           </div>
-          <Status clinicDecision={booking.clinicDecision} />
+          <Status clinicDecision={booking.clinicDecision} cancelledAt={booking.cancelledAt} />
         </div>
       </section>
 
@@ -103,9 +107,9 @@ export default function BookingDetails({
           startDate={dateInput?.startDate ?? booking.finalStartDate ?? ""}
           endDate={dateInput?.endDate ?? booking.finalEndDate ?? ""}
           onChange={onDateChange}
-          disabled={savingDates}
+          disabled={savingDates || Boolean(booking.cancelledAt) || booking.patientDecision}
         />
-        <button type="button" onClick={onSaveDates} disabled={savingDates} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
+        <button type="button" onClick={onSaveDates} disabled={savingDates || Boolean(booking.cancelledAt) || booking.patientDecision} className="mt-4 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
           {savingDates ? "Saving..." : booking.finalStartDate && booking.finalEndDate ? "Update Dates" : "Set Final Dates"}
         </button>
         <Feedback error={dateError} success={dateSuccess} />
@@ -119,10 +123,10 @@ export default function BookingDetails({
             Price
             <span className="relative mt-1 block">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">$</span>
-              <input id={`price-${booking.id}`} type="text" inputMode="decimal" value={priceInput} onChange={(event) => onPriceChange(event.target.value)} placeholder={booking.price !== null ? String(booking.price) : "Enter price"} disabled={savingPrice} className="w-full rounded-md border border-border bg-background py-2 pl-7 pr-3 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
+              <input id={`price-${booking.id}`} type="text" inputMode="decimal" value={priceInput} onChange={(event) => onPriceChange(event.target.value)} placeholder={booking.price !== null ? String(booking.price) : "Enter price"} disabled={savingPrice || Boolean(booking.cancelledAt) || booking.patientDecision} className="w-full rounded-md border border-border bg-background py-2 pl-7 pr-3 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
             </span>
           </label>
-          <button type="button" onClick={onSavePrice} disabled={savingPrice} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
+          <button type="button" onClick={onSavePrice} disabled={savingPrice || Boolean(booking.cancelledAt) || booking.patientDecision} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
             {savingPrice ? "Saving..." : booking.price !== null ? "Update Price" : "Set Price"}
           </button>
         </div>
@@ -137,15 +141,32 @@ export default function BookingDetails({
               onOpenMessages(String(booking.id));
             }
           }} 
-          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90"
+          disabled={Boolean(booking.cancelledAt)}
+          className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Contact Patient
         </button>
 
-        {!booking.clinicDecision && (
+        {!booking.clinicDecision && !booking.cancelledAt && (
           <button type="button" onClick={onAccept} disabled={accepting} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:opacity-90 disabled:opacity-50">
             {accepting ? "Accepting..." : "Accept consultation"}
           </button>
+        )}
+        {!booking.cancelledAt && !booking.clinicTripPaidAt && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={cancelling}
+            className="rounded-md border border-destructive px-4 py-2 text-sm font-medium text-destructive hover:bg-destructive hover:text-destructive-foreground disabled:opacity-50"
+          >
+            {cancelling ? "Cancelling..." : "Cancel before payment"}
+          </button>
+        )}
+        {booking.cancelledAt && (
+          <p className="self-center text-sm text-muted-foreground">
+            Cancelled by {booking.cancelledBy || "a participant"} on{" "}
+            {new Date(booking.cancelledAt).toLocaleDateString()}.
+          </p>
         )}
       </div>
 

@@ -1,10 +1,22 @@
 import { createServerClient } from "@supabase/ssr";
 import { type NextRequest, NextResponse } from "next/server";
+import { adminDemoCookieName, adminDemoCookieValue } from "@/app/components/dashboard/admin/adminDemoAuth";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
 export async function middleware(request: NextRequest) {
+  if (request.nextUrl.pathname.startsWith("/dashboard/accommodation")) {
+    return NextResponse.next();
+  }
+
+  if (
+    request.nextUrl.pathname.startsWith("/dashboard/admin")
+    && request.cookies.get(adminDemoCookieName)?.value === adminDemoCookieValue
+  ) {
+    return NextResponse.next();
+  }
+
   let supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers,

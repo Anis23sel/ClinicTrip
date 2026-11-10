@@ -487,6 +487,11 @@ export default function ClinicPage() {
       return;
     }
 
+    if (!booking.startDate || !booking.endDate) {
+      alert("Please select your travel dates.");
+      return;
+    }
+
     /*
      * Check authentication.
      */
@@ -1262,22 +1267,21 @@ export default function ClinicPage() {
               </h3>
 
               <p className="text-sm text-muted-foreground">
-                Select at least one procedure before contacting the
-                clinic.
+                Select at least one procedure and your travel dates before
+                contacting the clinic.
               </p>
 
-              <button
-                type="button"
-                onClick={handleContactClinic}
-                disabled={selectedProcedureIds.length === 0}
-                className={`w-full mt-5 px-6 py-3 rounded-lg transition-opacity text-center font-semibold ${
-                  selectedProcedureIds.length === 0
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:opacity-90"
-                }`}
-              >
-                Contact the clinic and start now
-              </button>
+              {selectedProcedureIds.length > 0 &&
+                dateRange.from &&
+                dateRange.to && (
+                  <button
+                    type="button"
+                    onClick={handleContactClinic}
+                    className="w-full mt-5 px-6 py-3 rounded-lg transition-opacity text-center font-semibold bg-primary text-primary-foreground hover:opacity-90"
+                  >
+                    Contact the clinic and start now
+                  </button>
+                )}
 
             </div>
 

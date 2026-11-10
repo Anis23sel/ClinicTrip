@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { Send, MessageSquare, Calendar, Info, DollarSign, Stethoscope, Paperclip } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 import BookingInquiryModal from "@/app/components/booking/BookingInquiryModal"; 
+import { maskContactInformation } from "@/app/utils/maskContactInformation";
 
 const supabase = createClient();
 
@@ -269,6 +270,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
 
     const currentReq = requests.find((r) => r.id === selectedRequestId);
     if (!currentReq) return;
+    const maskedContent = maskContactInformation(newMessage.trim());
 
     // Fetch the clinic's profile to get the receiver's user ID
     const { data: clinicData } = await supabase
@@ -295,7 +297,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
       body: JSON.stringify({
         requestId: selectedRequestId,
         receiverId: receiverId,
-        content: newMessage,
+        content: maskedContent,
       }),
     });
 
@@ -308,7 +310,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
         {
           id: Date.now().toString(),
           sender_id: currentUserId,
-          content: newMessage.trim(),
+          content: maskedContent,
           created_at: nowIso,
           is_read: false,
         },

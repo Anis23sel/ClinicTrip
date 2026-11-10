@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { Send, MessageSquare, Calendar, Info, User, DollarSign, Stethoscope } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
+import { maskContactInformation } from "@/app/utils/maskContactInformation";
 
 const supabase = createClient();
 
@@ -254,6 +255,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
 
     const currentReq = requests.find((r) => r.id === selectedRequestId);
     if (!currentReq || !currentReq.patientUserId) return;
+    const maskedContent = maskContactInformation(newMessage.trim());
 
     // Call to the /api/messages API route
     const response = await fetch("/api/messages", {
@@ -262,7 +264,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
       body: JSON.stringify({
         requestId: selectedRequestId,
         receiverId: currentReq.patientUserId,
-        content: newMessage,
+        content: maskedContent,
       }),
     });
 
@@ -275,7 +277,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
         {
           id: Date.now().toString(),
           sender_id: currentUserId,
-          content: newMessage.trim(),
+          content: maskedContent,
           created_at: nowIso,
           is_read: false,
         },

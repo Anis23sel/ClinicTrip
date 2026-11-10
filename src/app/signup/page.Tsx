@@ -228,7 +228,7 @@ export default function Signup() {
                 I am a: <span className="text-red-500">*</span>
               </label>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {(["patient", "clinic"] as const).map((type) => (
                   <button
                     key={type}
@@ -241,7 +241,7 @@ export default function Signup() {
                       setErrorMessage(null);
                       setFieldErrors({});
                     }}
-                    className={`rounded-lg border-2 px-4 py-2 capitalize transition-all ${
+                    className={`rounded-lg border-2 px-3 py-2 text-sm capitalize transition-all ${
                       formData.userType === type
                         ? "border-primary bg-primary/10 text-primary"
                         : "border-border hover:border-primary/50"
@@ -250,6 +250,13 @@ export default function Signup() {
                     {type}
                   </button>
                 ))}
+                <button
+                  type="button"
+                  onClick={() => router.push("/accommodation/signup")}
+                  className="rounded-lg border-2 border-border px-3 py-2 text-sm transition-all hover:border-primary/50 hover:text-primary"
+                >
+                  Accommodation
+                </button>
               </div>
             </div>
 
@@ -652,6 +659,12 @@ export default function Signup() {
                 className="text-primary hover:underline"
               >
                 Sign in
+              </Link>
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Manage a place to stay?{" "}
+              <Link href="/accommodation/signup" className="text-primary hover:underline">
+                Register your accommodation
               </Link>
             </p>
           </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { createClient } from "@/app/utils/supabase/server";
+import { maskContactInformation } from "@/app/utils/maskContactInformation";
 
 // Handle POST requests to send a new secure message
 export async function POST(request: Request) {
@@ -24,6 +25,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
+    const maskedContent = maskContactInformation(content.trim());
+
     // 6. Securely insert the message into the database
     // Note: sender_id is explicitly set to the authenticated user's ID for security
     const { data, error } = await supabase
@@ -32,7 +35,7 @@ export async function POST(request: Request) {
         request_id: requestId,
         sender_id: user.id,
         receiver_id: receiverId,
-        content: content.trim(),
+        content: maskedContent,
         is_read: false,
       })
       .select()

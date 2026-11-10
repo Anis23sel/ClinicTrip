@@ -5,6 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
+import {
+  adminDemoCookieName,
+  adminDemoCookieValue,
+  adminDemoEmail,
+  adminDemoPassword,
+  adminDemoSessionKey,
+} from "@/app/components/dashboard/admin/adminDemoAuth";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -17,12 +24,32 @@ export default function LoginForm() {
     password: "",
   });
 
+  const fillAdminDemo = () => {
+    setFormData({ email: adminDemoEmail, password: adminDemoPassword });
+  };
+
   const handleSubmit = async (
     e: React.FormEvent<HTMLFormElement>
   ) => {
     e.preventDefault();
 
     setLoading(true);
+
+    if (
+      formData.email.trim().toLowerCase() === adminDemoEmail
+      && formData.password === adminDemoPassword
+    ) {
+      try {
+        window.sessionStorage.setItem(adminDemoSessionKey, "true");
+        const secureCookie = window.location.protocol === "https:" ? "; Secure" : "";
+        document.cookie = `${adminDemoCookieName}=${adminDemoCookieValue}; Path=/; SameSite=Lax${secureCookie}`;
+        router.push("/dashboard/admin");
+      } catch {
+        alert("Unable to start the admin demo session. Check your browser storage settings and try again.");
+        setLoading(false);
+      }
+      return;
+    }
 
     // Sign in with Supabase Auth
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -94,6 +121,12 @@ export default function LoginForm() {
 
         {/* Card */}
         <div className="rounded-lg border border-border bg-card p-8">
+          <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4 text-sm text-amber-950">
+            <p className="font-semibold">Admin demo access</p>
+            <p className="mt-1">Email: <span className="font-mono">{adminDemoEmail}</span></p>
+            <p>Password: <span className="font-mono">{adminDemoPassword}</span></p>
+            
+          </div>
           <form
             onSubmit={handleSubmit}
             className="space-y-6"
@@ -195,6 +228,12 @@ export default function LoginForm() {
                 className="text-primary hover:underline"
               >
                 Sign up
+              </Link>
+            </p>
+            <p className="mt-3 text-sm text-muted-foreground">
+              Accommodation partner?{" "}
+              <Link href="/accommodation/login" className="text-primary hover:underline">
+                Sign in to your dashboard
               </Link>
             </p>
           </div>

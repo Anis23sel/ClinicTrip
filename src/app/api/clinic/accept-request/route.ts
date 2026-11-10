@@ -92,7 +92,8 @@ export async function POST(request: Request) {
             id_clinic,
             clinic_decision,
             final_start_date,
-            final_end_date
+            final_end_date,
+            cancelled_at
           `
         )
         .eq("id", requestId)
@@ -108,6 +109,13 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "Patient request could not be found." },
         { status: 404 }
+      );
+    }
+
+    if (patientRequest.cancelled_at) {
+      return NextResponse.json(
+        { error: "This consultation has been cancelled." },
+        { status: 409 }
       );
     }
 

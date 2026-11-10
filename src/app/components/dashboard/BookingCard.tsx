@@ -10,9 +10,6 @@ import {
 // import AccommodationTab from "../booking/AccommodationTab";
 // import TransferTab from "../booking/TransferTab";
 import BookingInquiryModal from "../booking/BookingInquiryModal";
-import { createClient } from "@/app/utils/supabase/client";
-
-const supabase = createClient();
 
 function formatRequestDate(
   startDate: string | null,
@@ -59,6 +56,9 @@ type Booking = {
   inquiryCompleted: boolean;
   clinicDecision: boolean;
   patientDecision: boolean;
+  cancelledAt: string | null;
+  cancelledBy: string | null;
+  clinicTripPaidAt: string | null;
 };
 
 interface Props {
@@ -186,19 +186,22 @@ export default function BookingCard({
 
     setCancelling(true);
 
-    const { error } = await supabase
-      .from("Patient_request")
-      .delete()
-      .eq("id", String(booking.id));
-
-    if (error) {
+    try {
+      const response = await fetch("/api/patient-requests/cancel", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ requestId: String(booking.id) }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || "We could not cancel this consultation.");
+    } catch (error) {
       console.error(
         "Failed to cancel consultation:",
         error
       );
 
       alert(
-        "We could not cancel this consultation. Please try again."
+        error instanceof Error ? error.message : "We could not cancel this consultation. Please try again."
       );
 
       setCancelling(false);
@@ -270,6 +273,14 @@ export default function BookingCard({
   function getRequestStatus(
     booking: Booking
   ) {
+  if (booking.cancelledAt) {
+    return {
+      label: "Cancelled",
+      color: "bg-red-100 text-red-800",
+      icon: <XCircle size={16} />,
+    };
+  }
+
     if (
       booking.clinicDecision &&
       booking.patientDecision
@@ -446,7 +457,7 @@ export default function BookingCard({
             View Details
           </button>
 
-          {booking.status === "pending" &&
+          {!booking.cancelledAt && booking.status === "pending" &&
             !inquiryCompleted && (
               <button
                 type="button"
@@ -462,7 +473,7 @@ export default function BookingCard({
               </button>
             )}
 
-          {booking.status === "pending" &&
+          {!booking.cancelledAt && booking.status === "pending" &&
             inquiryCompleted &&
             !booking.clinicDecision && (
               <button
@@ -476,7 +487,7 @@ export default function BookingCard({
               </button>
             )}
 
-          {booking.status === "pending" &&
+          {!booking.cancelledAt && booking.status === "pending" &&
             inquiryCompleted &&
             booking.clinicDecision &&
             !patientDecision && (
@@ -494,7 +505,7 @@ export default function BookingCard({
               </button>
             )}
 
-          {booking.status === "pending" && (
+          {!booking.cancelledAt && !booking.clinicTripPaidAt && (
             <button
               type="button"
               onClick={handleCancel}
@@ -503,8 +514,15 @@ export default function BookingCard({
             >
               {cancelling
                 ? "Cancelling..."
-                : "Cancel"}
+                : "Cancel before payment"}
             </button>
+          )}
+
+          {booking.cancelledAt && (
+            <p className="self-center text-sm text-muted-foreground">
+              Cancelled by {booking.cancelledBy || "a participant"} on{" "}
+              {new Date(booking.cancelledAt).toLocaleDateString()}.
+            </p>
           )}
         </div>
 
