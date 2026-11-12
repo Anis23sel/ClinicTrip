@@ -35,6 +35,10 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
   const [savingPrice, setSavingPrice] = useState<string | null>(null);
   const [priceError, setPriceError] = useState<string | null>(null);
   const [priceSuccess, setPriceSuccess] = useState<string | null>(null);
+  const [recoveryInputs, setRecoveryInputs] = useState<Record<string, string>>({});
+  const [savingRecovery, setSavingRecovery] = useState<string | null>(null);
+  const [recoveryError, setRecoveryError] = useState<string | null>(null);
+  const [recoverySuccess, setRecoverySuccess] = useState<string | null>(null);
   const [dateInputs, setDateInputs] = useState<Record<string, DateInput>>({});
   const [savingDates, setSavingDates] = useState<string | null>(null);
   const [dateError, setDateError] = useState<string | null>(null);
@@ -66,7 +70,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
       try {
         const { data: rows, error: requestError } = await supabase
           .from("Patient_request")
-          .select("id, id_patient, start_date, end_date, final_start_date, final_end_date, procedure, inquiry_completed, clinic_decision, patient_decision, price, cancelled_at, cancelled_by, clinictrip_paid_at")
+          .select("id, id_patient, start_date, end_date, final_start_date, final_end_date, procedure, inquiry_completed, clinic_decision, patient_decision, price, recovery_days, cancelled_at, cancelled_by, clinictrip_paid_at")
           .eq("id_clinic", clinicId)
           .order("created_at", { ascending: false });
         if (requestError) throw requestError;
@@ -99,6 +103,7 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
             clinicDecision: row.clinic_decision ?? false,
             patientDecision: row.patient_decision ?? false,
             price: row.price !== null && row.price !== undefined ? Number(row.price) : null,
+            recoveryDays: Number(row.recovery_days ?? 0),
             firstClinicContactAt: null,
             cancelledAt: row.cancelled_at,
             cancelledBy: row.cancelled_by,
@@ -118,6 +123,8 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
   const clearFeedback = () => {
     setPriceError(null);
     setPriceSuccess(null);
+    setRecoveryError(null);
+    setRecoverySuccess(null);
     setDateError(null);
     setDateSuccess(null);
   };
@@ -162,6 +169,45 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
       setPriceError(updateError instanceof Error ? updateError.message : "We could not update the price.");
     } finally {
       setSavingPrice(null);
+    }
+  };
+
+  const handleRecoveryChange = (bookingId: string, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+    setRecoveryInputs((current) => ({ ...current, [bookingId]: value }));
+    setRecoveryError(null);
+    setRecoverySuccess(null);
+  };
+
+  const handleSaveRecovery = async (booking: Booking) => {
+    const inputValue = recoveryInputs[booking.id] ?? String(booking.recoveryDays);
+    if (!inputValue.trim()) return setRecoveryError("Please enter recovery time in days.");
+    const recoveryDays = Number(inputValue);
+    if (!Number.isSafeInteger(recoveryDays) || recoveryDays < 0) {
+      return setRecoveryError("Recovery time must be a whole number of days, zero or more.");
+    }
+
+    setSavingRecovery(booking.id);
+    setRecoveryError(null);
+    setRecoverySuccess(null);
+    try {
+      const { error: updateError } = await supabase
+        .from("Patient_request")
+        .update({ recovery_days: recoveryDays })
+        .eq("id", booking.id)
+        .eq("id_clinic", clinicId);
+      if (updateError) throw updateError;
+
+      setBookings((current) => current.map((item) =>
+        item.id === booking.id ? { ...item, recoveryDays } : item
+      ));
+      setRecoveryInputs((current) => ({ ...current, [booking.id]: String(recoveryDays) }));
+      setRecoverySuccess("Recovery time saved successfully.");
+    } catch (updateError) {
+      console.error("Failed to update recovery time:", updateError);
+      setRecoveryError(updateError instanceof Error ? updateError.message : "We could not update recovery time.");
+    } finally {
+      setSavingRecovery(null);
     }
   };
 
@@ -306,8 +352,10 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
           booking={selectedBooking}
           dateInput={dateInputs[selectedBooking.id]}
           priceInput={priceInputs[selectedBooking.id] ?? ""}
+          recoveryInput={recoveryInputs[selectedBooking.id] ?? String(selectedBooking.recoveryDays)}
           savingDates={savingDates === selectedBooking.id}
           savingPrice={savingPrice === selectedBooking.id}
+          savingRecovery={savingRecovery === selectedBooking.id}
           accepting={accepting === selectedBooking.id}
           cancelling={cancelling === selectedBooking.id}
           contacting={contact.bookingId === selectedBooking.id}
@@ -318,6 +366,8 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
           dateSuccess={dateSuccess}
           priceError={priceError}
           priceSuccess={priceSuccess}
+          recoveryError={recoveryError}
+          recoverySuccess={recoverySuccess}
           sendError={sendError}
           sendSuccess={sendSuccess}
           onBack={handleBackToRequests}
@@ -325,6 +375,8 @@ export default function ClinicBookings({ clinicId, onOpenMessages }: ClinicBooki
           onSaveDates={() => handleSaveDates(selectedBooking)}
           onPriceChange={(value) => handlePriceChange(selectedBooking.id, value)}
           onSavePrice={() => handleSavePrice(selectedBooking)}
+          onRecoveryChange={(value) => handleRecoveryChange(selectedBooking.id, value)}
+          onSaveRecovery={() => handleSaveRecovery(selectedBooking)}
           onContact={() => openContactForm(selectedBooking)}
           onAccept={() => handleAcceptRequest(selectedBooking)}
           onCancel={() => handleCancelRequest(selectedBooking)}

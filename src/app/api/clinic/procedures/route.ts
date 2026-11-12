@@ -62,12 +62,17 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'Starting price must be a valid non-negative number.' }, { status: 400 });
   }
 
+  const recoveryDays = body?.recoveryDays;
+  if (typeof recoveryDays !== 'number' || !Number.isSafeInteger(recoveryDays) || recoveryDays < 0) {
+    return NextResponse.json({ error: 'Estimated recovery days must be a whole non-negative number.' }, { status: 400 });
+  }
+
   const { data: procedure, error } = await authorization.supabase
     .from('clinic_procedures')
-    .update({ starting_price: price })
+    .update({ starting_price: price, recovery_days: recoveryDays })
     .eq('id', clinicProcedureId)
     .eq('clinic_id', authorization.clinicId)
-    .select('id, procedure_id, starting_price')
+    .select('id, procedure_id, starting_price, recovery_days')
     .maybeSingle();
 
   if (error) {

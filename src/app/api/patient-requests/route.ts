@@ -194,12 +194,37 @@ export async function POST(request: Request) {
      */
     const procedureValue = procedures.join(", ");
 
+    const { data: selectedProcedureRows, error: selectedProcedureError } = await supabase
+      .from("medical_procedure")
+      .select("id")
+      .in("name", procedures);
+    if (selectedProcedureError) {
+      console.error("Failed to load selected procedures:", selectedProcedureError);
+      return NextResponse.json({ error: "We could not load the selected procedures." }, { status: 500 });
+    }
+
+    const selectedProcedureIds = (selectedProcedureRows || []).map((procedure) => procedure.id);
+    const { data: clinicProcedureRows, error: clinicProcedureError } = selectedProcedureIds.length
+      ? await supabase
+          .from("clinic_procedures")
+          .select("recovery_days")
+          .eq("clinic_id", clinicId)
+          .in("procedure_id", selectedProcedureIds)
+      : { data: [], error: null };
+    if (clinicProcedureError) {
+      console.error("Failed to load clinic procedure recovery estimates:", clinicProcedureError);
+      return NextResponse.json({ error: "We could not load the clinic's recovery estimates." }, { status: 500 });
+    }
+
+    const recoveryDays = Math.max(0, ...(clinicProcedureRows || []).map((procedure) => procedure.recovery_days ?? 0));
+
     const insertData: {
       id_patient: string;
       id_clinic: string;
       procedure: string;
       start_date: string | null;
       end_date: string | null;
+      recovery_days: number;
       doctor_id?: string | null;
     } = {
       id_patient: patientId,
@@ -207,6 +232,7 @@ export async function POST(request: Request) {
       procedure: procedureValue,
       start_date: startDate,
       end_date: endDate,
+      recovery_days: recoveryDays,
     };
 
   

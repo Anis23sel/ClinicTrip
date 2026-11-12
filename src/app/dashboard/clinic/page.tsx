@@ -31,7 +31,8 @@ export type ClinicProcedureRecord = {
   id: string;
   procedure_id: string;
   starting_price: number | string | null;
-  procedure: { name: string; description: string | null; duration_minutes: number | null } | null;
+  recovery_days: number;
+  procedure: { name: string; description: string | null } | null;
 };
 
 export type MedicalProcedureOption = {
@@ -102,7 +103,7 @@ function ClinicDashboardContent() {
       setClinic(clinicRow as ClinicRecord);
 
       const [{ data: procedureRows, error: procedureError }, { data: requestRows, error: requestError }, { data: medicalProcedureRows, error: procedureCatalogError }] = await Promise.all([
-        supabase.from('clinic_procedures').select('id, procedure_id, starting_price').eq('clinic_id', clinicRow.id),
+        supabase.from('clinic_procedures').select('id, procedure_id, starting_price, recovery_days').eq('clinic_id', clinicRow.id),
         supabase.from('Patient_request').select('id, created_at, id_patient, id_clinic, procedure, start_date, end_date, final_start_date, final_end_date, clinic_decision, patient_decision, price').eq('id_clinic', clinicRow.id).order('created_at', { ascending: false }),
         supabase.from('medical_procedure').select('id, name').order('name'),
       ]);
@@ -113,7 +114,7 @@ function ClinicDashboardContent() {
 
       const procedureIds = [...new Set((procedureRows || []).map((procedure) => procedure.procedure_id))];
       const { data: medicalProcedures, error: medicalProcedureError } = procedureIds.length
-        ? await supabase.from('medical_procedure').select('id, name, description, duration_minutes').in('id', procedureIds)
+        ? await supabase.from('medical_procedure').select('id, name, description').in('id', procedureIds)
         : { data: [], error: null };
       if (medicalProcedureError) console.error('Failed to load medical procedures:', medicalProcedureError);
       const medicalProcedureById = new Map((medicalProcedures || []).map((procedure) => [String(procedure.id), procedure]));
@@ -162,13 +163,13 @@ function ClinicDashboardContent() {
     setClinic(nextClinic);
   };
 
-  const addProcedure = async (procedureId: string, startingPrice: number) => {
+  const addProcedure = async (procedureId: string, startingPrice: number, recoveryDays: number) => {
     if (!clinic) return;
 
     const { data: procedure, error: insertError } = await supabase
       .from('clinic_procedures')
-      .insert({ clinic_id: clinic.id, procedure_id: procedureId, starting_price: startingPrice })
-      .select('id, procedure_id, starting_price')
+      .insert({ clinic_id: clinic.id, procedure_id: procedureId, starting_price: startingPrice, recovery_days: recoveryDays })
+      .select('id, procedure_id, starting_price, recovery_days')
       .single();
     if (insertError || !procedure) throw insertError || new Error('The procedure could not be added.');
 
@@ -177,21 +178,22 @@ function ClinicDashboardContent() {
       id: String(procedure.id),
       procedure_id: String(procedure.procedure_id),
       starting_price: procedure.starting_price,
-      procedure: procedureDetails ? { name: procedureDetails.name, description: null, duration_minutes: null } : null,
+      recovery_days: procedure.recovery_days,
+      procedure: procedureDetails ? { name: procedureDetails.name, description: null } : null,
     }]);
   };
 
-  const updateProcedure = async (clinicProcedureId: string, startingPrice: number) => {
+  const updateProcedure = async (clinicProcedureId: string, startingPrice: number, recoveryDays: number) => {
     const response = await fetch('/api/clinic/procedures', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ clinicProcedureId, startingPrice }),
+      body: JSON.stringify({ clinicProcedureId, startingPrice, recoveryDays }),
     });
     const result = await response.json();
     if (!response.ok) throw new Error(result.error || 'The procedure could not be updated.');
 
     setProcedures((current) => current.map((procedure) => procedure.id === clinicProcedureId
-      ? { ...procedure, starting_price: result.procedure.starting_price }
+      ? { ...procedure, starting_price: result.procedure.starting_price, recovery_days: result.procedure.recovery_days }
       : procedure));
   };
 

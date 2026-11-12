@@ -7,8 +7,10 @@ type BookingDetailsProps = {
   booking: Booking;
   dateInput?: DateInput;
   priceInput: string;
+  recoveryInput: string;
   savingDates: boolean;
   savingPrice: boolean;
+  savingRecovery: boolean;
   accepting: boolean;
   cancelling: boolean;
   contacting: boolean;
@@ -19,6 +21,8 @@ type BookingDetailsProps = {
   dateSuccess: string | null;
   priceError: string | null;
   priceSuccess: string | null;
+  recoveryError: string | null;
+  recoverySuccess: string | null;
   sendError: string;
   sendSuccess: string;
   onBack: () => void;
@@ -26,6 +30,8 @@ type BookingDetailsProps = {
   onSaveDates: () => void;
   onPriceChange: (value: string) => void;
   onSavePrice: () => void;
+  onRecoveryChange: (value: string) => void;
+  onSaveRecovery: () => void;
   onContact: () => void;
   onAccept: () => void;
   onCancel: () => void;
@@ -40,8 +46,10 @@ export default function BookingDetails({
   booking,
   dateInput,
   priceInput,
+  recoveryInput,
   savingDates,
   savingPrice,
+  savingRecovery,
   accepting,
   cancelling,
   contacting,
@@ -52,6 +60,8 @@ export default function BookingDetails({
   dateSuccess,
   priceError,
   priceSuccess,
+  recoveryError,
+  recoverySuccess,
   sendError,
   sendSuccess,
   onBack,
@@ -59,6 +69,8 @@ export default function BookingDetails({
   onSaveDates,
   onPriceChange,
   onSavePrice,
+  onRecoveryChange,
+  onSaveRecovery,
   onContact,
   onAccept,
   onCancel,
@@ -131,6 +143,21 @@ export default function BookingDetails({
           </button>
         </div>
         <Feedback error={priceError} success={priceSuccess} />
+      </section>
+
+      <section className="mb-5 rounded-lg border border-border bg-card p-6">
+        <h4 className="mb-3 font-semibold">Set Recovery Time</h4>
+        <p className="mb-3 text-sm text-muted-foreground">Set the minimum recovery period in whole days. The patient will need at least one additional accommodation night.</p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label htmlFor={`recovery-${booking.id}`} className="flex-1 text-sm font-medium">
+            Recovery days
+            <input id={`recovery-${booking.id}`} type="number" min={0} step={1} value={recoveryInput} onChange={(event) => onRecoveryChange(event.target.value)} disabled={savingRecovery || Boolean(booking.cancelledAt) || booking.patientDecision} className="mt-1 w-full rounded-md border border-border bg-background px-3 py-2 outline-none focus:ring-2 focus:ring-primary disabled:opacity-50" />
+          </label>
+          <button type="button" onClick={onSaveRecovery} disabled={savingRecovery || Boolean(booking.cancelledAt) || booking.patientDecision} className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
+            {savingRecovery ? "Saving..." : "Save Recovery Time"}
+          </button>
+        </div>
+        <Feedback error={recoveryError} success={recoverySuccess} />
       </section>
 
       <div className="mb-5 flex flex-wrap gap-3">

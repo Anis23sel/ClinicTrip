@@ -14,7 +14,7 @@ type ClinicProcedure = {
   id: string;
   name: string;
   description: string | null;
-  duration_minutes: number | null;
+  recovery_days: number;
   starting_price: number | null;
 };
 
@@ -48,6 +48,22 @@ type ClinicData = {
   isClinicUser?: boolean;
   hasUserReviewed?: boolean;
 };
+
+function addCalendarDays(value: string, days: number) {
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return null;
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatCalendarDate(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeZone: "UTC",
+  }).format(date);
+}
 
 export default function ClinicPage() {
   const { id } = useParams<{ id: string }>();
@@ -212,12 +228,12 @@ export default function ClinicPage() {
           .select(`
             id,
             starting_price,
+            recovery_days,
             procedure_id,
             medical_procedure (
               id,
               name,
-              description,
-              duration_minutes
+              description
             )
           `)
           .eq("clinic_id", id);
@@ -242,7 +258,7 @@ export default function ClinicPage() {
             id: String(row.id),
             name: procedure.name,
             description: procedure.description,
-            duration_minutes: procedure.duration_minutes,
+            recovery_days: row.recovery_days,
             starting_price:
               row.starting_price !== null
                 ? Number(row.starting_price)
@@ -487,8 +503,24 @@ export default function ClinicPage() {
       return;
     }
 
-    if (!booking.startDate || !booking.endDate) {
-      alert("Please select your travel dates.");
+    if (!booking.startDate) {
+      alert("Please select your travel start date.");
+      return;
+    }
+
+    const recoveryDays = Math.max(
+      0,
+      ...clinic.procedures
+        .filter((procedure) => selectedProcedureIds.includes(procedure.id))
+        .map((procedure) => procedure.recovery_days)
+    );
+    const minimumTravelEnd = addCalendarDays(booking.startDate, recoveryDays);
+    if (recoveryDays > 0 && minimumTravelEnd && (!booking.endDate || booking.endDate < minimumTravelEnd)) {
+      alert(`Please extend your travel dates to include the estimated recovery period, through ${formatCalendarDate(minimumTravelEnd)}.`);
+      return;
+    }
+    if (!booking.endDate) {
+      alert("Please select your travel end date.");
       return;
     }
 
@@ -670,6 +702,25 @@ export default function ClinicPage() {
               procedure.name.toLowerCase()
           )
         );
+  const selectedClinicProcedures = clinic.procedures.filter((procedure) =>
+    selectedProcedureIds.includes(procedure.id)
+  );
+  const estimatedRecoveryDays = Math.max(
+    0,
+    ...selectedClinicProcedures.map((procedure) => procedure.recovery_days)
+  );
+  const estimatedRecoveryStart = dateRange.from
+    ? addCalendarDays(dateRange.from, 1)
+    : null;
+  const estimatedRecoveryEnd = dateRange.from
+    ? addCalendarDays(dateRange.from, estimatedRecoveryDays)
+    : null;
+  const travelWindowNeedsExtension = Boolean(
+    dateRange.from &&
+    estimatedRecoveryDays > 0 &&
+    estimatedRecoveryEnd &&
+    (!dateRange.to || dateRange.to < estimatedRecoveryEnd)
+  );
 
   /*
    * ============================================================
@@ -842,21 +893,18 @@ export default function ClinicPage() {
                                       </p>
                                     )}
 
-                                    {procedure.duration_minutes !==
-                                      null && (
-                                      <div className="mb-3">
+                                    <div className="mb-3">
 
-                                        <p className="text-xs text-muted-foreground">
-                                          Duration
-                                        </p>
+                                      <p className="text-xs text-muted-foreground">
+                                        Estimated recovery
+                                      </p>
 
-                                        <p className="font-medium text-sm">
-                                          {procedure.duration_minutes}{" "}
-                                          minutes
-                                        </p>
+                                      <p className="font-medium text-sm">
+                                        {procedure.recovery_days}{" "}
+                                        {procedure.recovery_days === 1 ? "day" : "days"}
+                                      </p>
 
-                                      </div>
-                                    )}
+                                    </div>
 
                                     {procedure.starting_price !==
                                       null && (
@@ -1011,6 +1059,43 @@ export default function ClinicPage() {
                     </div>
 
                     {/* DATES */}
+
+                    {selectedClinicProcedures.length > 0 && (
+                      <div
+                        role={travelWindowNeedsExtension ? "alert" : "status"}
+                        className={`rounded-xl border p-4 ${
+                          travelWindowNeedsExtension
+                            ? "border-primary/40 bg-primary/10 text-foreground"
+                            : "border-primary/20 bg-primary/5"
+                        }`}
+                      >
+                        <h4 className="font-semibold">Estimated recovery dates</h4>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          Based on {estimatedRecoveryDays} estimated recovery{" "}
+                          {estimatedRecoveryDays === 1 ? "day" : "days"} after your selected start date.
+                          {selectedClinicProcedures.length > 1
+                            ? " The longest estimate is used for your selected procedures."
+                            : ""}
+                        </p>
+                        {dateRange.from && estimatedRecoveryDays > 0 && estimatedRecoveryStart && estimatedRecoveryEnd ? (
+                          <p className="mt-2 font-medium">
+                            {formatCalendarDate(estimatedRecoveryStart)} – {formatCalendarDate(estimatedRecoveryEnd)}
+                          </p>
+                        ) : estimatedRecoveryDays === 0 ? (
+                          <p className="mt-2 font-medium">No additional recovery days estimated.</p>
+                        ) : (
+                          <p className="mt-2 text-sm font-medium">Choose a start date to see the estimated recovery dates.</p>
+                        )}
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Your selected start date is treated as the procedure day; the clinic will confirm the actual procedure and recovery dates.
+                        </p>
+                        {travelWindowNeedsExtension && estimatedRecoveryEnd && (
+                          <p className="mt-3 text-sm font-semibold text-primary">
+                            Extend your travel window through {formatCalendarDate(estimatedRecoveryEnd)} to include the estimated recovery period.
+                          </p>
+                        )}
+                      </div>
+                    )}
 
                     <FinalDateRangePicker
                       startDate={dateRange.from}

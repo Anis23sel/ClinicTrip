@@ -11,6 +11,7 @@ export type Booking = {
   clinicDecision: boolean;
   patientDecision: boolean;
   price: number | null;
+  recoveryDays: number;
   cancelledAt: string | null;
   cancelledBy: string | null;
   clinicTripPaidAt: string | null;

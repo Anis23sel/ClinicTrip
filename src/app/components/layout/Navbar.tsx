@@ -293,7 +293,7 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="shrink-0">
-            <span className="text-2xl font-bold text-primary">Clinic Trip</span>
+            <span className="text-2xl font-bold text-primary">ClinicTrip</span>
           </Link>
         </div>
 
