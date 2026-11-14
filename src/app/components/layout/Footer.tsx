@@ -9,7 +9,7 @@ export default function Footer() {
           {/* Brand Info */}
           <div className="space-y-3 md:col-span-1">
             <Link href="/" className="inline-block">
-              <span className="text-2xl font-bold text-primary">Clinic Trip</span>
+              <span className="text-2xl font-bold tracking-widest text-primary">CLINIC TRIP</span>
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Medical tourism made simple - compare clinics, book procedures, and travel with confidence.

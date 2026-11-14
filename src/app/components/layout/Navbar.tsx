@@ -293,11 +293,11 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="shrink-0">
-            <span className="text-2xl font-bold text-primary">ClinicTrip</span>
+            <span className="text-2xl font-bold tracking-widest text-primary">CLINIC TRIP</span>
           </Link>
         </div>
 
-        {/* Navigation principale */}
+        {/* Navigation */}
         <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link

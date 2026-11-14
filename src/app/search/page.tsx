@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Eye, Scale, Stethoscope, type LucideIcon } from "lucide-react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Scale, Stethoscope, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
@@ -19,7 +19,6 @@ function getDomainIcon(domainName: string): LucideIcon {
   if (name.includes("dental")) return Smile;
   if (name.includes("hair")) return Scissors;
   if (name.includes("bariatric")) return Scale;
-  if (name.includes("eye")) return Eye;
   return Stethoscope;
 }
 

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { BedDouble, CalendarDays, Car, Check, Clock3, MapPin, Plane, Stethoscope } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
+import FinalDateRangePicker from "@/app/components/dashboard/clinic/FinalDateRangePicker";
 
 type RequestDetails = {
   id: string;
@@ -53,7 +54,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accommodationId, setAccommodationId] = useState("");
-  const [nightsByRequest, setNightsByRequest] = useState<Record<string, string>>({});
+  const [checkOutByRequest, setCheckOutByRequest] = useState<Record<string, string>>({});
   const [transferSelected, setTransferSelected] = useState(false);
 
   useEffect(() => {
@@ -122,19 +123,9 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
 
   const clinicIntervalNights = daysBetween(details?.finalStartDate ?? null, details?.finalEndDate ?? null);
   const hasConfirmedInterval = clinicIntervalNights !== null && clinicIntervalNights >= 0;
-  const minimumNights = hasConfirmedInterval
-    ? clinicIntervalNights + (details?.recoveryDays ?? 0) + 1
-    : 0;
-
   if (loading) return <p className="py-12 text-center text-muted-foreground">Loading consultation details...</p>;
   if (error || !details) return <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">{error || "Consultation not found."}</p>;
 
-  const selectedNights = Number(nightsByRequest[details.id] ?? minimumNights);
-  const nights = hasConfirmedInterval
-    ? Number.isSafeInteger(selectedNights) && selectedNights >= minimumNights
-      ? selectedNights
-      : minimumNights
-    : 0;
   const accommodation = hasConfirmedInterval
     ? accommodationOptions.find((option) => option.id === accommodationId)
     : undefined;
@@ -142,8 +133,10 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   const minimumCheckOutDate = hasConfirmedInterval
     ? addDays(details.finalEndDate, details.recoveryDays + 1)
     : null;
-  const extraNights = hasConfirmedInterval ? nights - minimumNights : 0;
-  const checkOutDate = addDays(minimumCheckOutDate, extraNights);
+  const checkOutDate = hasConfirmedInterval
+    ? checkOutByRequest[details.id] ?? minimumCheckOutDate
+    : null;
+  const nights = daysBetween(checkInDate, checkOutDate) ?? 0;
   const accommodationTotal = accommodation ? accommodation.price * nights : 0;
   const clinicTripFee = 100;
   const total = (details.price || 0) + accommodationTotal + (transferSelected ? 80 : 0) + clinicTripFee;
@@ -189,37 +182,30 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
           </div>
           {!hasConfirmedInterval && <p role="status" className="mt-3 text-sm text-muted-foreground">Accommodation dates will be available after the clinic confirms both procedure dates.</p>}
           {accommodation && (
-            <div className="mt-4 space-y-2">
-              <label htmlFor="accommodation-nights" className="block text-sm">
-                Number of nights
-                <input
-                  id="accommodation-nights"
-                  type="number"
-                  min={minimumNights}
-                  step={1}
-                  value={nightsByRequest[details.id] ?? String(minimumNights)}
-                  onChange={(event) => {
-                    const value = event.currentTarget.value;
-                    setNightsByRequest((current) => ({
+            <div className="mt-4 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <p className="mb-1 text-sm font-medium">Check-in</p>
+                  <div className="flex min-h-11 items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm">
+                    <CalendarDays size={16} className="shrink-0 text-primary" />
+                    <span>{formatDate(checkInDate)}</span>
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-1 text-sm font-medium">Check-out</p>
+                  <FinalDateRangePicker
+                    startDate={checkInDate ?? ""}
+                    endDate={checkOutDate ?? ""}
+                    minEndDate={minimumCheckOutDate ?? ""}
+                    fixedStartDate
+                    title="Choose check-out date"
+                    onChange={({ endDate }) => setCheckOutByRequest((current) => ({
                       ...current,
-                      [details.id]: value,
-                    }));
-                  }}
-                  onBlur={() => setNightsByRequest((current) => {
-                    const value = Number(current[details.id] ?? minimumNights);
-                    return {
-                      ...current,
-                      [details.id]: String(
-                        Number.isSafeInteger(value) ? Math.max(minimumNights, value) : minimumNights,
-                      ),
-                    };
-                  })}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
-                />
-              </label>
-              <p className="text-xs text-muted-foreground">
-                Minimum stay: {minimumNights} night{minimumNights === 1 ? "" : "s"} (the clinic-confirmed procedure interval, plus {details.recoveryDays} recovery day{details.recoveryDays === 1 ? "" : "s"} and 1 extra night).
-              </p>
+                      [details.id]: endDate,
+                    }))}
+                  />
+                </div>
+              </div>
               <p className="text-xs text-muted-foreground">
                 Clinic-confirmed check-in: {formatDate(checkInDate)}
                 {checkOutDate ? ` · Check-out after recovery: ${formatDate(checkOutDate)}` : ""}

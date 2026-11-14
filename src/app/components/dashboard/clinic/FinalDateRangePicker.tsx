@@ -10,6 +10,8 @@ export default function FinalDateRangePicker({
   disabled,
   title = "Final procedure dates",
   inline = false,
+  fixedStartDate = false,
+  minEndDate = "",
 }: {
   startDate: string;
   endDate: string;
@@ -17,6 +19,8 @@ export default function FinalDateRangePicker({
   disabled?: boolean;
   title?: string;
   inline?: boolean;
+  fixedStartDate?: boolean;
+  minEndDate?: string;
 }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +50,7 @@ export default function FinalDateRangePicker({
 
   const handleOpen = () => {
     if (disabled) return;
-    const date = startDate ? parseDate(startDate) : null;
+    const date = parseDate(fixedStartDate ? (minEndDate || startDate) : startDate);
     if (date) {
       setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     }
@@ -73,6 +77,13 @@ export default function FinalDateRangePicker({
     const dateString = formatDate(date);
     if (dateString < todayString) return;
 
+    if (fixedStartDate) {
+      if (!startDate || dateString < (minEndDate || startDate)) return;
+      onChange({ startDate, endDate: dateString });
+      setOpen(false);
+      return;
+    }
+
     if (!startDate || endDate) {
       onChange({ startDate: dateString, endDate: "" });
       return;
@@ -88,6 +99,11 @@ export default function FinalDateRangePicker({
   };
 
   const handleClear = () => {
+    if (fixedStartDate) {
+      onChange({ startDate, endDate: "" });
+      setOpen(false);
+      return;
+    }
     onChange({ startDate: "", endDate: "" });
     setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     setOpen(false);
@@ -96,7 +112,7 @@ export default function FinalDateRangePicker({
   const label = startDate && endDate
     ? `${startDate} -> ${endDate}`
     : startDate
-      ? `From ${startDate}`
+      ? (fixedStartDate ? "Select check-out date" : `From ${startDate}`)
       : "Select dates";
   const days = getCalendarDays(currentMonth);
   const isCurrentMonth = (date: Date) =>
@@ -112,7 +128,7 @@ export default function FinalDateRangePicker({
         className="flex h-full w-full min-w-[190px] items-center gap-2 rounded-lg border border-border bg-input-background px-3 py-3 text-sm transition-colors hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Calendar size={16} className="shrink-0 text-muted-foreground" />
-        <span className={startDate ? "" : "text-muted-foreground"}>{label}</span>
+        <span className={endDate || (!fixedStartDate && startDate) ? "" : "text-muted-foreground"}>{fixedStartDate && endDate ? endDate : label}</span>
         <ChevronDown size={14} className="ml-auto text-muted-foreground" />
       </button>}
 
@@ -210,6 +226,7 @@ export default function FinalDateRangePicker({
               const dateString = formatDate(date);
               const current = isCurrentMonth(date);
               const past = dateString < todayString;
+              const beforeMinimumEnd = fixedStartDate && !!minEndDate && dateString < minEndDate;
               const isStart = dateString === startDate;
               const isEnd = dateString === endDate;
               const inRange = !!startDate && !!endDate && dateString > startDate && dateString < endDate;
@@ -218,9 +235,9 @@ export default function FinalDateRangePicker({
                 <button
                   key={`${dateString}-${index}`}
                   type="button"
-                  disabled={past || !current}
+                  disabled={past || beforeMinimumEnd || !current}
                   onClick={() => handleDateClick(date)}
-                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-primary/10 text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
+                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past || beforeMinimumEnd ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-primary/10 text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && !beforeMinimumEnd && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
                 >
                   {date.getDate()}
                 </button>
