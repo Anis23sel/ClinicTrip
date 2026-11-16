@@ -237,7 +237,7 @@ export default function FinalDateRangePicker({
                   type="button"
                   disabled={past || beforeMinimumEnd || !current}
                   onClick={() => handleDateClick(date)}
-                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past || beforeMinimumEnd ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-primary/10 text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && !beforeMinimumEnd && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
+                  className={`relative flex h-9 items-center justify-center text-sm transition-colors ${!current ? "text-muted-foreground/30" : ""} ${past || beforeMinimumEnd ? "cursor-not-allowed text-muted-foreground/30" : ""} ${inRange ? "bg-blush-terracotta text-foreground" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && !beforeMinimumEnd && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
                 >
                   {date.getDate()}
                 </button>
@@ -303,7 +303,7 @@ function CalendarMonth({
           type="button"
           disabled={past || !current}
           onClick={() => onDateClick(date)}
-          className={`relative flex h-9 items-center justify-center text-sm transition-colors sm:h-10 ${!current || past ? "text-muted-foreground/40" : "text-foreground"} ${inRange ? "bg-primary/10" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
+          className={`relative flex h-9 items-center justify-center text-sm transition-colors sm:h-10 ${!current || past ? "text-muted-foreground/40" : "text-foreground"} ${inRange ? "bg-blush-terracotta" : ""} ${isStart || isEnd ? "bg-primary font-medium text-primary-foreground" : ""} ${!past && current && !isStart && !isEnd && !inRange ? "hover:bg-accent" : ""} ${isToday && !isStart && !isEnd ? "font-semibold ring-1 ring-inset ring-primary" : ""}`}
         >{date.getDate()}</button>;
       })}
     </div>

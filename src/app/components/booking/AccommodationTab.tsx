@@ -28,7 +28,7 @@ export default function AccommodationTab({ accommodations, booking, setBooking }
       {accommodations.map((acc) => {
         const isSelected = booking.accommodationId === acc.id;
         return (
-          <div key={acc.id} className={`border-2 rounded-xl p-5 transition-all ${isSelected ? "border-primary bg-primary/5" : "border-border"}`}>
+          <div key={acc.id} className={`border-2 rounded-xl p-5 transition-all ${isSelected ? "border-primary bg-soft-clay" : "border-border"}`}>
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
                 <h4 className="font-semibold text-lg">{acc.name}</h4>
@@ -56,7 +56,7 @@ export default function AccommodationTab({ accommodations, booking, setBooking }
                       <button
                         key={room.type}
                         onClick={() => setBooking({ ...booking, roomType: room.type })}
-                        className={`p-3 rounded-lg border-2 text-left transition-all ${booking.roomType === room.type ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"}`}
+                        className={`p-3 rounded-lg border-2 text-left transition-all ${booking.roomType === room.type ? "border-primary bg-blush-terracotta" : "border-border hover:border-primary/50"}`}
                       >
                         <div className="font-medium text-sm">{room.type}</div>
                         <div className="text-primary font-semibold text-sm">${room.price}/night</div>

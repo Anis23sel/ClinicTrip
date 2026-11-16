@@ -46,7 +46,7 @@ export default function ClinicResultCard({
     <article className="relative overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-lg">
       <Link href={`/clinic/${clinic.id}${query}`} className="block">
       <div className="flex flex-col gap-4 p-4 sm:gap-5 md:flex-row md:items-stretch">
-        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/20 to-primary/10 md:aspect-[5/4] md:w-72">
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/20 to-blush-terracotta md:aspect-[5/4] md:w-72">
           {clinic.images.length > 0 ? (
             <img
               src={clinic.images[0].publicUrl}
@@ -103,7 +103,7 @@ export default function ClinicResultCard({
             {clinic.procedures.slice(0, 3).map((procedure) => (
               <span
                 key={procedure}
-                className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"
+                className="px-2.5 py-1 bg-soft-clay text-primary rounded-full text-xs font-medium"
               >
                 {procedure}
               </span>

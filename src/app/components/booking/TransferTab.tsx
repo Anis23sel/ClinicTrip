@@ -22,7 +22,7 @@ export default function TransferTab({ booking, setBooking }: Props) {
   return (
     <div className="space-y-5">
       <h3 className="text-xl font-semibold">Transfer Services</h3>
-      <div className={`border-2 rounded-xl p-5 transition-all ${booking.transferPackage ? "border-primary bg-primary/5" : "border-border"}`}>
+      <div className={`border-2 rounded-xl p-5 transition-all ${booking.transferPackage ? "border-primary bg-soft-clay" : "border-border"}`}>
         <div className="flex items-start justify-between gap-4 mb-4">
           <div>
             <h4 className="font-semibold text-lg mb-1">Complete Transfer Package</h4>

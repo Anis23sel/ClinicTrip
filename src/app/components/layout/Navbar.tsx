@@ -430,7 +430,7 @@ export default function Navbar() {
                           onClick={() => handleNotificationClick(n.requestId)}
                           className="w-full text-left flex items-start gap-3 p-3 transition hover:bg-accent"
                         >
-                          <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary shrink-0">
+                          <div className="mt-1 rounded-full bg-blush-terracotta p-2 text-primary shrink-0">
                             <MessageSquare size={14} />
                           </div>
                           <div className="flex-1 overflow-hidden">

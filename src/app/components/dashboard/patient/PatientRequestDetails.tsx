@@ -156,7 +156,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
       <div className="flex flex-col gap-5">
         <article className="rounded-xl border-2 border-primary bg-card p-5 shadow-sm">
           <div className="mb-5 flex items-center gap-3">
-            <span className="rounded-lg bg-primary/10 p-2 text-primary"><Stethoscope size={20} /></span>
+            <span className="rounded-lg bg-blush-terracotta p-2 text-primary"><Stethoscope size={20} /></span>
             <div><h3 className="text-lg font-semibold">Clinic</h3><p className="text-sm text-muted-foreground">Your selected consultation</p></div>
           </div>
           <div className="space-y-4">
@@ -176,9 +176,9 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
         </article>
 
         <article className={`relative rounded-xl border border-border bg-card p-5 transition-opacity ${optionalLocked ? "pointer-events-none select-none opacity-45 grayscale" : ""}`}>
-          <div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-primary/10 p-2 text-primary"><BedDouble size={20} /></span><div><h3 className="text-lg font-semibold">Accommodation</h3><p className="text-sm text-muted-foreground">Choose a partner hotel</p></div></div>
+          <div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-blush-terracotta p-2 text-primary"><BedDouble size={20} /></span><div><h3 className="text-lg font-semibold">Accommodation</h3><p className="text-sm text-muted-foreground">Choose a partner hotel</p></div></div>
           <div className="space-y-3">
-            {accommodationOptions.map((option) => <button type="button" key={option.id} aria-pressed={accommodationId === option.id} disabled={!hasConfirmedInterval} onClick={() => setAccommodationId(accommodationId === option.id ? "" : option.id)} className={`w-full rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${accommodationId === option.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center justify-between gap-3 font-medium">{option.name}{accommodationId === option.id && <Check size={17} className="text-primary" />}</span><span className="mt-1 block text-xs text-muted-foreground">{option.detail}</span><span className="mt-3 block font-semibold text-primary">{money(option.price)} / night</span></button>)}
+            {accommodationOptions.map((option) => <button type="button" key={option.id} aria-pressed={accommodationId === option.id} disabled={!hasConfirmedInterval} onClick={() => setAccommodationId(accommodationId === option.id ? "" : option.id)} className={`w-full rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${accommodationId === option.id ? "border-primary bg-soft-clay" : "border-border hover:border-primary/50"}`}><span className="flex items-center justify-between gap-3 font-medium">{option.name}{accommodationId === option.id && <Check size={17} className="text-primary" />}</span><span className="mt-1 block text-xs text-muted-foreground">{option.detail}</span><span className="mt-3 block font-semibold text-primary">{money(option.price)} / night</span></button>)}
           </div>
           {!hasConfirmedInterval && <p role="status" className="mt-3 text-sm text-muted-foreground">Accommodation dates will be available after the clinic confirms both procedure dates.</p>}
           {accommodation && (
@@ -218,7 +218,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
 
 <article className={`relative rounded-xl border border-border bg-card p-5 transition-opacity ${optionalLocked ? "pointer-events-none select-none opacity-45 grayscale" : ""}`}>
   <div className="mb-5 flex items-center gap-3">
-    <span className="rounded-lg bg-primary/10 p-2 text-primary">
+    <span className="rounded-lg bg-blush-terracotta p-2 text-primary">
       <Car size={20} />
     </span>
     <div>
@@ -231,7 +231,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
     type="button"
     aria-pressed={transferSelected}
     onClick={() => setTransferSelected(!transferSelected)}
-    className={`w-full rounded-lg border p-4 text-left transition-colors ${transferSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+    className={`w-full rounded-lg border p-4 text-left transition-colors ${transferSelected ? "border-primary bg-soft-clay" : "border-border hover:border-primary/50"}`}
   >
     <span className="flex items-center justify-between gap-3 font-medium">
       Complete transfer package
@@ -263,7 +263,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
 
 
 <aside
-  className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-primary/5 xl:sticky xl:top-24"
+  className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-soft-clay xl:sticky xl:top-24"
   aria-live="polite"
 >
   <div className="border-b border-border bg-primary/[0.04] px-5 py-4 sm:px-6">
@@ -332,7 +332,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
     </div>
 
     {/* Highlighted ClinicTrip processing fee */}
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 p-4">
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-primary/25 bg-soft-clay p-4">
       <span>
         <span className="block text-base font-bold">
           ClinicTrip processing fee

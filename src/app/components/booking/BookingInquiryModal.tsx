@@ -201,7 +201,7 @@ export default function BookingInquiryModal({
         {/* Header*/}
         <div className="flex shrink-0 items-center justify-between border-b border-border p-6">
           <div className="flex items-center gap-2">
-            <div className="rounded-full bg-primary/10 p-2 text-primary">
+            <div className="rounded-full bg-blush-terracotta p-2 text-primary">
               <Paperclip size={20} />
             </div>
             <div>

@@ -37,7 +37,7 @@ export default function Values() {
 
             return (
               <div key={value.title} className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
+                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-soft-clay">
                   <Icon className="text-primary" size={32} />
                 </div>
 

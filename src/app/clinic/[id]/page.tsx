@@ -785,7 +785,7 @@ export default function ClinicPage() {
                     onClick={() => setActiveTab(tab)}
                     className={`flex-1 py-4 px-6 border-b-2 transition-colors capitalize font-semibold text-sm ${
                       activeTab === tab
-                        ? "border-primary text-primary bg-primary/5"
+                        ? "border-primary text-primary bg-soft-clay"
                         : "border-transparent text-muted-foreground hover:text-foreground hover:bg-accent/50"
                     }`}
                   >
@@ -874,7 +874,7 @@ export default function ClinicPage() {
                                 }}
                                 className={`w-full text-left border-2 rounded-xl p-4 transition-all ${
                                   isSelected
-                                    ? "border-primary bg-primary/5"
+                                    ? "border-primary bg-soft-clay"
                                     : "border-border hover:border-primary/50"
                                 }`}
                               >
@@ -964,7 +964,7 @@ export default function ClinicPage() {
                         <label
                           className={`flex gap-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${
                             booking.doctorId === ""
-                              ? "border-primary bg-primary/5"
+                              ? "border-primary bg-soft-clay"
                               : "border-border hover:border-primary/50"
                           }`}
                         >
@@ -1006,7 +1006,7 @@ export default function ClinicPage() {
                             key={doctor.id}
                             className={`flex gap-4 border-2 rounded-xl p-4 cursor-pointer transition-all ${
                               booking.doctorId === doctor.id
-                                ? "border-primary bg-primary/5"
+                                ? "border-primary bg-soft-clay"
                                 : "border-border hover:border-primary/50"
                             }`}
                           >
@@ -1065,8 +1065,8 @@ export default function ClinicPage() {
                         role={travelWindowNeedsExtension ? "alert" : "status"}
                         className={`rounded-xl border p-4 ${
                           travelWindowNeedsExtension
-                            ? "border-primary/40 bg-primary/10 text-foreground"
-                            : "border-primary/20 bg-primary/5"
+                            ? "border-primary/40 bg-blush-terracotta text-foreground"
+                            : "border-primary/20 bg-soft-clay"
                         }`}
                       >
                         <h4 className="font-semibold">Estimated recovery dates</h4>
@@ -1345,7 +1345,7 @@ export default function ClinicPage() {
 
             {/* Your Request */}
 
-            <div className="bg-primary/10 rounded-xl border-2 border-primary p-6">
+            <div className="bg-soft-clay rounded-xl border-2 border-primary p-6">
 
               <h3 className="font-semibold text-lg mb-2">
                 Your Request
@@ -1378,7 +1378,7 @@ export default function ClinicPage() {
                 Route Map
               </h3>
 
-              <div className="aspect-square bg-gradient-to-br from-primary/20 to-primary/10 rounded-lg flex items-center justify-center">
+              <div className="aspect-square bg-gradient-to-br from-primary/20 to-blush-terracotta rounded-lg flex items-center justify-center">
 
                 <div className="text-center text-muted-foreground">
 
@@ -1437,7 +1437,7 @@ export default function ClinicPage() {
                       
                       {/* Avatar + Name + Ratings */}
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center text-sm shrink-0">
+                        <div className="w-10 h-10 rounded-full bg-blush-terracotta text-primary font-bold flex items-center justify-center text-sm shrink-0">
                           {initials}
                         </div>
                         <div>
@@ -1484,7 +1484,7 @@ export default function ClinicPage() {
               <p className="text-sm text-muted-foreground">Reviews are written by verified patients who have experienced care at our partner clinics.</p>
             </div>
           ) : clinic.hasUserReviewed ? (
-            <div className="border border-primary/20 bg-primary/5 rounded-xl p-5 text-center space-y-1.5">
+            <div className="border border-primary/20 bg-soft-clay rounded-xl p-5 text-center space-y-1.5">
               <p className="text-base font-semibold text-primary">You have already reviewed this clinic.</p>
               <p className="text-sm text-muted-foreground">Thank you for helping the community with your feedback!</p>
             </div>

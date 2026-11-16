@@ -54,7 +54,7 @@ export default function PatientFavorites() {
                   style={{ backgroundImage: `url("${clinic.image}")` }}
                 />
               ) : (
-                <div className="h-44 w-full bg-gradient-to-br from-primary/20 to-primary/5" aria-hidden="true" />
+                <div className="h-44 w-full bg-gradient-to-br from-primary/20 to-soft-clay" aria-hidden="true" />
               )}
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">

@@ -144,7 +144,7 @@ export default function SearchLocationSelector({
                 type="button"
                 onClick={() => handleCitySelect("")}
                 className={`w-full border-b border-border px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
-                  city ? "text-muted-foreground" : "bg-primary/10 font-medium text-primary"
+                  city ? "text-muted-foreground" : "bg-blush-terracotta font-medium text-primary"
                 }`}
               >
                 All cities
@@ -163,7 +163,7 @@ export default function SearchLocationSelector({
                   }
                   className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${
                     city === cityOption
-                      ? "bg-primary/10 text-primary font-medium"
+                      ? "bg-blush-terracotta text-primary font-medium"
                       : ""
                   }`}
                 >
