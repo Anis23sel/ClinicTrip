@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, Suspense, useMemo } from "react";
-import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Scale, Stethoscope, type LucideIcon } from "lucide-react";
+import { useState, useEffect, Suspense, useMemo, useRef } from "react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Scale, Stethoscope, ChevronDown, Check, HeartPulse, Brain, Bone, Droplets, Venus, Ribbon, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
@@ -16,9 +16,17 @@ const supabase = createClient();
 function getDomainIcon(domainName: string): LucideIcon {
   const name = domainName.toLowerCase();
   if (name.includes("plastic")) return Sparkles;
+  if (name.includes("aesthetic")) return Sparkles;
   if (name.includes("dental")) return Smile;
   if (name.includes("hair")) return Scissors;
   if (name.includes("bariatric")) return Scale;
+  if (name.includes("cardio") || name.includes("vascular")) return HeartPulse;
+  if (name.includes("neuro")) return Brain;
+  if (name.includes("ortho")) return Bone;
+  if (name.includes("uro")) return Droplets;
+  if (name.includes("gyne") || name.includes("fertility") || name.includes("ivf")) return Venus;
+  if (name.includes("onco")) return Ribbon;
+  if (name.includes("transplant")) return HeartPulse;
   return Stethoscope;
 }
 
@@ -46,6 +54,7 @@ function SearchContent() {
     surgeryTypes: [] as string[],
     sortBy: "popularity",
   });
+  const categoryMenuRef = useRef<HTMLDetailsElement>(null);
 
   useEffect(() => {
     const loadSearchData = async () => {
@@ -337,6 +346,16 @@ function SearchContent() {
     return sortedClinics;
   }, [activeBodyPartProcedures, city, clinics, filters.category, filters.priceRange, filters.rating, filters.sortBy, filters.surgeryTypes, keyword]);
 
+  const categoryOptions = [
+    { value: "", label: "All categories", icon: LayoutGrid },
+    ...availableDomains.map((domain) => ({
+      value: domain.id,
+      label: domain.name,
+      icon: getDomainIcon(domain.name),
+    })),
+  ];
+  const selectedCategory = categoryOptions.find((option) => option.value === filters.category) || categoryOptions[0];
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Search Bar */}
@@ -396,29 +415,38 @@ function SearchContent() {
                 <div className="space-y-6">
                   <div>
                     <label className="block mb-2 text-sm font-semibold">Category</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {[
-                        { value: "", label: "All", icon: LayoutGrid },
-                        ...availableDomains.map((domain) => ({
-                          value: domain.id,
-                          label: domain.name,
-                          icon: getDomainIcon(domain.name),
-                        })),
-                      ].map(({ value, label, icon: Icon }) => (
-                        <button
-                          key={value}
-                          onClick={() => setFilters((current) => ({ ...current, category: value, surgeryTypes: [] }))}
-                          className={`py-2 px-3 rounded-lg border-2 text-sm flex items-center justify-center gap-2 transition-all ${
-                            filters.category === value 
-                              ? "border-primary bg-soft-clay text-primary font-medium"
-                              : "border-border hover:border-primary text-foreground"
-                          }`}
-                        >
-                          <Icon size={16} />
-                          <span>{label}</span>
-                        </button>
-                      ))}
-                    </div>
+                    <details ref={categoryMenuRef} className="group relative">
+                      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2 text-sm transition hover:border-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                        <span className="flex min-w-0 items-center gap-2.5">
+                          <selectedCategory.icon size={18} className="shrink-0 text-primary" aria-hidden="true" />
+                          <span className="truncate">{selectedCategory.label}</span>
+                        </span>
+                        <ChevronDown size={16} className="shrink-0 text-muted-foreground transition-transform group-open:rotate-180" aria-hidden="true" />
+                      </summary>
+                      <div className="mt-2 max-h-64 overflow-y-auto rounded-xl border border-border bg-card p-1.5 shadow-sm">
+                        {categoryOptions.map(({ value, label, icon: Icon }) => {
+                          const selected = filters.category === value;
+                          return (
+                            <button
+                              key={value || "all"}
+                              type="button"
+                              aria-pressed={selected}
+                              onClick={() => {
+                                setFilters((current) => ({ ...current, category: value, surgeryTypes: [] }));
+                                if (categoryMenuRef.current) categoryMenuRef.current.open = false;
+                              }}
+                              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors ${
+                                selected ? "bg-soft-clay font-semibold text-primary" : "text-foreground hover:bg-accent"
+                              }`}
+                            >
+                              <Icon size={17} className="shrink-0" aria-hidden="true" />
+                              <span className="min-w-0 flex-1">{label}</span>
+                              {selected && <Check size={16} className="shrink-0" aria-hidden="true" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </details>
                   </div>
 
                   <div>
