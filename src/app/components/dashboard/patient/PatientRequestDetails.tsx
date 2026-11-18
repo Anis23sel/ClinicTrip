@@ -266,7 +266,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   className="overflow-hidden rounded-2xl border border-border bg-card shadow-lg shadow-soft-clay xl:sticky xl:top-24"
   aria-live="polite"
 >
-  <div className="border-b border-border bg-primary/[0.04] px-5 py-4 sm:px-6">
+  <div className="border-b border-border bg-background px-5 py-4 sm:px-6">
     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-primary">
       Booking summary
     </p>

@@ -243,7 +243,7 @@ export default function Signup() {
                     }}
                     className={`rounded-lg border-2 px-3 py-2 text-sm capitalize transition-all ${
                       formData.userType === type
-                        ? "border-primary bg-blush-terracotta text-primary"
+                        ? "border-primary bg-soft-clay text-primary"
                         : "border-border hover:border-primary/50"
                     }`}
                   >
