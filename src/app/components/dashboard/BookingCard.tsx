@@ -304,7 +304,7 @@ export default function BookingCard({
 
     if (booking.inquiryCompleted) {
       return {
-        label: "Waiting for Clinic",
+        label: "In Progress",
         color:
           "bg-yellow-100 text-yellow-800",
         icon: <Clock size={16} />,

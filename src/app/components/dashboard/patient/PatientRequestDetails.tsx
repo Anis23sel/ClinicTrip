@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BedDouble, CalendarDays, Car, Check, Clock3, MapPin, Plane, Stethoscope } from "lucide-react";
+import { BedDouble, CalendarDays, Car, Check, Clock3, MapPin, Stethoscope } from "lucide-react";
 import { createClient } from "@/app/utils/supabase/client";
 
 type RequestDetails = {
@@ -22,8 +22,8 @@ type RequestDetails = {
 };
 
 const accommodationOptions = [
-  { id: "premium", name: "Partner Hotel Premium", detail: "5 min from clinic · per night", price: 60 },
-  { id: "standard", name: "Partner Hotel Standard", detail: "10 min from clinic · per night", price: 40 },
+  { id: "premium", name: "Partner Hotel Premium", detail: "Double room · King-size bed · Breakfast included · 5 min from clinic · per night", price: 60 },
+  { id: "standard", name: "Partner Hotel Standard", detail: "Double room · King-size bed · Breakfast included · 10 min from clinic · per night", price: 40 },
 ];
 
 function formatDate(value: string | null) {
@@ -53,8 +53,9 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accommodationId, setAccommodationId] = useState("");
-  const [nightsByRequest, setNightsByRequest] = useState<Record<string, string>>({});
-  const [transferSelected, setTransferSelected] = useState(false);
+  const [accommodationNotNeeded, setAccommodationNotNeeded] = useState(false);
+  const [checkOutByRequest, setCheckOutByRequest] = useState<Record<string, string>>({});
+  const [transferChoice, setTransferChoice] = useState<"needed" | "not_needed" | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -129,24 +130,29 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   if (loading) return <p className="py-12 text-center text-muted-foreground">Loading consultation details...</p>;
   if (error || !details) return <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 text-destructive">{error || "Consultation not found."}</p>;
 
-  const selectedNights = Number(nightsByRequest[details.id] ?? minimumNights);
-  const nights = hasConfirmedInterval
-    ? Number.isSafeInteger(selectedNights) && selectedNights >= minimumNights
-      ? selectedNights
-      : minimumNights
-    : 0;
-  const accommodation = hasConfirmedInterval
+  const checkInDate = hasConfirmedInterval ? details.finalStartDate : null;
+  const minimumCheckOutDate = checkInDate
+    ? addDays(checkInDate, minimumNights)
+    : null;
+  const selectedCheckOutDate =
+    checkOutByRequest[details.id] && minimumCheckOutDate
+      ? checkOutByRequest[details.id] >= minimumCheckOutDate
+        ? checkOutByRequest[details.id]
+        : minimumCheckOutDate
+      : minimumCheckOutDate;
+  const nights = daysBetween(checkInDate, selectedCheckOutDate) ?? 0;
+  const accommodation = hasConfirmedInterval && !accommodationNotNeeded
     ? accommodationOptions.find((option) => option.id === accommodationId)
     : undefined;
-  const checkInDate = hasConfirmedInterval ? details.finalStartDate : null;
-  const minimumCheckOutDate = hasConfirmedInterval
-    ? addDays(details.finalEndDate, details.recoveryDays + 1)
-    : null;
-  const extraNights = hasConfirmedInterval ? nights - minimumNights : 0;
-  const checkOutDate = addDays(minimumCheckOutDate, extraNights);
+  const extraNights = Math.max(0, nights - minimumNights);
+  const checkOutDate = selectedCheckOutDate;
   const accommodationTotal = accommodation ? accommodation.price * nights : 0;
   const clinicTripFee = 100;
-  const total = (details.price || 0) + accommodationTotal + (transferSelected ? 80 : 0) + clinicTripFee;
+  const transferSelected = transferChoice === "needed";
+  const clinicPaymentAtClinic =
+    details.price === null
+      ? null
+      : Math.max(0, details.price - clinicTripFee) + accommodationTotal + (transferSelected ? 80 : 0);
   const money = (value: number) => new Intl.NumberFormat(undefined, { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(value);
   const optionalLocked = !details.clinicApproved;
 
@@ -185,40 +191,77 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
         <article className={`relative rounded-xl border border-border bg-card p-5 transition-opacity ${optionalLocked ? "pointer-events-none select-none opacity-45 grayscale" : ""}`}>
           <div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-primary/10 p-2 text-primary"><BedDouble size={20} /></span><div><h3 className="text-lg font-semibold">Accommodation</h3><p className="text-sm text-muted-foreground">Choose a partner hotel</p></div></div>
           <div className="space-y-3">
-            {accommodationOptions.map((option) => <button type="button" key={option.id} aria-pressed={accommodationId === option.id} disabled={!hasConfirmedInterval} onClick={() => setAccommodationId(accommodationId === option.id ? "" : option.id)} className={`w-full rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${accommodationId === option.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center justify-between gap-3 font-medium">{option.name}{accommodationId === option.id && <Check size={17} className="text-primary" />}</span><span className="mt-1 block text-xs text-muted-foreground">{option.detail}</span><span className="mt-3 block font-semibold text-primary">{money(option.price)} / night</span></button>)}
+            {accommodationOptions.map((option) => (
+              <button
+                type="button"
+                key={option.id}
+                aria-pressed={!accommodationNotNeeded && accommodationId === option.id}
+                disabled={!hasConfirmedInterval}
+                onClick={() => {
+                  setAccommodationNotNeeded(false);
+                  setAccommodationId(option.id);
+                }}
+                className={`w-full rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${!accommodationNotNeeded && accommodationId === option.id ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+              >
+                <span className="flex items-center justify-between gap-3 font-medium">
+                  {option.name}
+                  {!accommodationNotNeeded && accommodationId === option.id && <Check size={17} className="text-primary" />}
+                </span>
+                <span className="mt-1 block text-xs text-muted-foreground">{option.detail}</span>
+                <span className="mt-3 block font-semibold text-primary">{money(option.price)} / night</span>
+              </button>
+            ))}
+            <button
+              type="button"
+              aria-pressed={accommodationNotNeeded}
+              disabled={!hasConfirmedInterval}
+              onClick={() => {
+                setAccommodationNotNeeded(true);
+                setAccommodationId("");
+              }}
+              className={`w-full rounded-lg border p-4 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${accommodationNotNeeded ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+            >
+              <span className="flex items-center justify-between gap-3 font-medium">
+                Accommodation not needed
+                {accommodationNotNeeded && <Check size={17} className="text-primary" />}
+              </span>
+              <span className="mt-1 block text-xs text-muted-foreground">I will arrange my own accommodation.</span>
+            </button>
           </div>
           {!hasConfirmedInterval && <p role="status" className="mt-3 text-sm text-muted-foreground">Accommodation dates will be available after the clinic confirms both procedure dates.</p>}
           {accommodation && (
             <div className="mt-4 space-y-2">
-              <label htmlFor="accommodation-nights" className="block text-sm">
-                Number of nights
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="text-sm font-medium">Agreed stay</p>
+                <p className="mt-1 text-sm text-primary">
+                  {minimumNights} night{minimumNights === 1 ? "" : "s"}
+                </p>
+              </div>
+              <label htmlFor="accommodation-check-out" className="block text-sm">
+                Extend stay until
                 <input
-                  id="accommodation-nights"
-                  type="number"
-                  min={minimumNights}
-                  step={1}
-                  value={nightsByRequest[details.id] ?? String(minimumNights)}
+                  id="accommodation-check-out"
+                  type="date"
+                  min={minimumCheckOutDate ?? undefined}
+                  value={checkOutDate ?? ""}
                   onChange={(event) => {
                     const value = event.currentTarget.value;
-                    setNightsByRequest((current) => ({
+                    if (!value || (minimumCheckOutDate && value < minimumCheckOutDate)) return;
+                    setCheckOutByRequest((current) => ({
                       ...current,
                       [details.id]: value,
                     }));
                   }}
-                  onBlur={() => setNightsByRequest((current) => {
-                    const value = Number(current[details.id] ?? minimumNights);
-                    return {
-                      ...current,
-                      [details.id]: String(
-                        Number.isSafeInteger(value) ? Math.max(minimumNights, value) : minimumNights,
-                      ),
-                    };
-                  })}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2"
                 />
               </label>
+              {extraNights > 0 && (
+                <p className="text-xs font-medium text-primary">
+                  Extended by {extraNights} night{extraNights === 1 ? "" : "s"}
+                </p>
+              )}
               <p className="text-xs text-muted-foreground">
-                Minimum stay: {minimumNights} night{minimumNights === 1 ? "" : "s"} (the clinic-confirmed procedure interval, plus {details.recoveryDays} recovery day{details.recoveryDays === 1 ? "" : "s"} and 1 extra night).
+                Agreed stay is fixed at {minimumNights} nights. Use the calendar only to extend beyond the agreed checkout date.
               </p>
               <p className="text-xs text-muted-foreground">
                 Clinic-confirmed check-in: {formatDate(checkInDate)}
@@ -241,25 +284,42 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
     </div>
   </div>
 
-  <button
-    type="button"
-    aria-pressed={transferSelected}
-    onClick={() => setTransferSelected(!transferSelected)}
-    className={`w-full rounded-lg border p-4 text-left transition-colors ${transferSelected ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
-  >
-    <span className="flex items-center justify-between gap-3 font-medium">
-      Complete transfer package
-      {transferSelected && <Check size={17} className="text-primary" />}
-    </span>
+  <div className="space-y-3">
+    <button
+      type="button"
+      aria-pressed={transferChoice === "needed"}
+      onClick={() => setTransferChoice("needed")}
+      className={`w-full rounded-lg border p-4 text-left transition-colors ${transferChoice === "needed" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+    >
+      <span className="flex items-center justify-between gap-3 font-medium">
+        Complete transfer package
+        {transferChoice === "needed" && <Check size={17} className="text-primary" />}
+      </span>
 
-    <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-      Round-trip airport pickup and daily hotel to clinic rides.
-    </span>
+      <span className="mt-1 block text-xs leading-5 text-muted-foreground">
+        Round-trip airport pickup and daily hotel to clinic rides.
+      </span>
 
-    <span className="mt-3 block text-lg font-bold text-primary">
-      {money(80)} total
-    </span>
-  </button>
+      <span className="mt-3 block text-lg font-bold text-primary">
+        {money(80)} total
+      </span>
+    </button>
+
+    <button
+      type="button"
+      aria-pressed={transferChoice === "not_needed"}
+      onClick={() => setTransferChoice("not_needed")}
+      className={`w-full rounded-lg border p-4 text-left transition-colors ${transferChoice === "not_needed" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}
+    >
+      <span className="flex items-center justify-between gap-3 font-medium">
+        Clinic transfers not needed
+        {transferChoice === "not_needed" && <Check size={17} className="text-primary" />}
+      </span>
+      <span className="mt-1 block text-xs text-muted-foreground">
+        I will arrange my own airport and clinic transportation.
+      </span>
+    </button>
+  </div>
 
   {optionalLocked && (
     <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-background/20 p-5 text-center">
@@ -312,6 +372,9 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
           <span className="mt-1 block text-xs text-muted-foreground">
             {accommodation.name} · {nights} night{nights === 1 ? "" : "s"}
           </span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Double room · King-size bed · Breakfast included
+          </span>
         </span>
         <span className="font-semibold">{money(accommodationTotal)}</span>
       </div>
@@ -337,11 +400,13 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
           Total payment at clinic
         </p>
         <p className="text-xs text-muted-foreground">
-          To be paid directly to the clinic
+          {details.price === null
+            ? "Processing fee deduction pending"
+            : `Procedure ${money(details.price)} - processing fee ${money(clinicTripFee)}${accommodationTotal > 0 || transferSelected ? " + selected extras" : ""}`}
         </p>
       </div>
       <span className="text-sm font-semibold text-muted-foreground">
-        {details.price === null ? "Pending" : money(total - clinicTripFee)}
+        {clinicPaymentAtClinic === null ? "Pending" : money(clinicPaymentAtClinic)}
       </span>
     </div>
 
