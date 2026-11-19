@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { BedDouble, CalendarDays, Car, Check, Clock3, MapPin, Stethoscope } from "lucide-react";

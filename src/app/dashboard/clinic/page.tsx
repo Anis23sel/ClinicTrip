@@ -102,23 +102,40 @@ function ClinicDashboardContent() {
       if (clinicError || !clinicRow) throw clinicError || new Error('No clinic is linked to your account.');
       setClinic(clinicRow as ClinicRecord);
 
-      const [{ data: procedureRows, error: procedureError }, { data: requestRows, error: requestError }, { data: medicalProcedureRows, error: procedureCatalogError }] = await Promise.all([
+      const [{ data: procedureRows, error: procedureError }, { data: requestRows, error: requestError }, { data: medicalProcedureRows, error: procedureCatalogError }, { data: categoryRows, error: categoryError }, { data: domainRows, error: domainError }] = await Promise.all([
         supabase.from('clinic_procedures').select('id, procedure_id, starting_price, recovery_days').eq('clinic_id', clinicRow.id),
         supabase.from('Patient_request').select('id, created_at, id_patient, id_clinic, procedure, start_date, end_date, final_start_date, final_end_date, clinic_decision, patient_decision, price').eq('id_clinic', clinicRow.id).order('created_at', { ascending: false }),
-        supabase.from('medical_procedure').select('id, name').order('name'),
+        supabase.from('medical_procedure').select('id, name, category_id').order('name'),
+        supabase.from('medical_categories').select('id, domain_id'),
+        supabase.from('medical_domains').select('id, name'),
       ]);
       if (procedureError) console.error('Failed to load clinic procedures:', procedureError);
       if (requestError) console.error('Failed to load clinic consultations:', requestError);
       if (procedureCatalogError) console.error('Failed to load procedure options:', procedureCatalogError);
-      setMedicalProcedures((medicalProcedureRows || []).map((procedure) => ({ id: String(procedure.id), name: procedure.name })));
+      if (categoryError) console.error('Failed to load procedure categories:', categoryError);
+      if (domainError) console.error('Failed to load medical domains:', domainError);
 
-      const procedureIds = [...new Set((procedureRows || []).map((procedure) => procedure.procedure_id))];
+      const allowedDomainIds = new Set((domainRows || [])
+        .filter((domain) => ['hair', 'plastic', 'dental', 'bariatric', 'aesthetic'].some((keyword) => domain.name.toLowerCase().includes(keyword)))
+        .map((domain) => String(domain.id)));
+      const allowedCategoryIds = new Set((categoryRows || [])
+        .filter((category) => category.domain_id !== null && allowedDomainIds.has(String(category.domain_id)))
+        .map((category) => String(category.id)));
+      const allowedProcedures = (medicalProcedureRows || []).filter((procedure) =>
+        procedure.category_id !== null && allowedCategoryIds.has(String(procedure.category_id))
+      );
+      const allowedProcedureIds = new Set(allowedProcedures.map((procedure) => String(procedure.id)));
+      setMedicalProcedures(allowedProcedures.map((procedure) => ({ id: String(procedure.id), name: procedure.name })));
+
+      const procedureIds = [...new Set((procedureRows || [])
+        .map((procedure) => procedure.procedure_id)
+        .filter((procedureId) => allowedProcedureIds.has(String(procedureId))))];
       const { data: medicalProcedures, error: medicalProcedureError } = procedureIds.length
         ? await supabase.from('medical_procedure').select('id, name, description').in('id', procedureIds)
         : { data: [], error: null };
       if (medicalProcedureError) console.error('Failed to load medical procedures:', medicalProcedureError);
       const medicalProcedureById = new Map((medicalProcedures || []).map((procedure) => [String(procedure.id), procedure]));
-      setProcedures((procedureRows || []).map((procedure) => ({
+      setProcedures((procedureRows || []).filter((procedure) => allowedProcedureIds.has(String(procedure.procedure_id))).map((procedure) => ({
         ...procedure,
         procedure: medicalProcedureById.get(String(procedure.procedure_id)) || null,
       })) as ClinicProcedureRecord[]);
@@ -165,6 +182,9 @@ function ClinicDashboardContent() {
 
   const addProcedure = async (procedureId: string, startingPrice: number, recoveryDays: number) => {
     if (!clinic) return;
+    if (!medicalProcedures.some((procedure) => procedure.id === procedureId)) {
+      throw new Error('Choose a procedure from an available category.');
+    }
 
     const { data: procedure, error: insertError } = await supabase
       .from('clinic_procedures')

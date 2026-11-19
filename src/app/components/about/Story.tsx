@@ -9,26 +9,20 @@ export default function Story() {
 
           <div className="mx-auto max-w-3xl space-y-4 leading-relaxed text-muted-foreground">
             <p>
-              Founded in 2020, Clinic Air emerged from a simple observation:
-              millions of people around the world were traveling abroad for
-              medical procedures, but the process was fragmented,
-              complicated, and often risky.
+              More than just an app, we are a team of women with backgrounds in medicine and engineering,
+              deeply experienced in patient care. 
             </p>
 
             <p>
-              Our founders, a team of healthcare professionals and technology
-              experts, saw an opportunity to create a platform that would
-              streamline the entire medical tourism journey. From finding the
-              right clinic and booking procedures to arranging accommodation
-              and aftercare, we wanted to make everything simple,
-              transparent, and secure.
+              While supporting patients, especially in plastic surgery and dental care, we saw firsthand how flawed and unsafe the current
+              system is: confidential medical files and intimate photos hastily sent over WhatsApp
+              to informal middlemen, clinics forced to act as travel agencies, and the chaos of last-
+              minute cancellations. 
             </p>
 
             <p>
-              Today, Clinic Air connects thousands of patients with hundreds
-              of verified clinics across dozens of countries. We've helped
-              make medical tourism accessible, affordable, and safe for
-              everyone.
+              Above all, we refuse to accept the steep, opaque markups
+              charged by traditional agencies. We knew there had to be a safer, fairer, and far simpler way.
             </p>
           </div>
         </div>

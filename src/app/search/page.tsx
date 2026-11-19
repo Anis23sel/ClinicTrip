@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense, useMemo } from "react";
-import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Eye, Scale, Stethoscope, type LucideIcon } from "lucide-react";
+import { Search, SlidersHorizontal, Star, X, LayoutGrid, Sparkles, Smile, Scissors, Scale, Stethoscope, type LucideIcon } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/app/utils/supabase/client";
 import SearchDateRangePicker from "../components/search/SearchDateRangePicker";
@@ -16,10 +16,10 @@ const supabase = createClient();
 function getDomainIcon(domainName: string): LucideIcon {
   const name = domainName.toLowerCase();
   if (name.includes("plastic")) return Sparkles;
+  if (name.includes("aesthetic")) return Sparkles;
   if (name.includes("dental")) return Smile;
   if (name.includes("hair")) return Scissors;
   if (name.includes("bariatric")) return Scale;
-  if (name.includes("eye")) return Eye;
   return Stethoscope;
 }
 
@@ -338,6 +338,10 @@ function SearchContent() {
     return sortedClinics;
   }, [activeBodyPartProcedures, city, clinics, filters.category, filters.priceRange, filters.rating, filters.sortBy, filters.surgeryTypes, keyword]);
 
+  const visibleCategoryDomains = ["hair", "plastic", "dental", "bariatric", "aesthetic"]
+    .map((keyword) => availableDomains.find((domain) => domain.name.toLowerCase().includes(keyword)))
+    .filter((domain): domain is MedicalDomainFilter => Boolean(domain));
+
   return (
     <div className="min-h-screen bg-background">
       {/* Top Search Bar */}
@@ -371,13 +375,13 @@ function SearchContent() {
           {(city || dateRange.from) && (
             <div className="flex flex-wrap gap-2 mt-3">
               {city && (
-                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full flex items-center gap-1">
+                <span className="px-2 py-1 bg-blush-terracotta text-primary text-xs rounded-full flex items-center gap-1">
                   {city}
                   <button onClick={() => setCity("")} className="hover:text-destructive"><X size={10} /></button>
                 </span>
               )}
               {dateRange.from && (
-                <span className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-full flex items-center gap-1">
+                <span className="px-2 py-1 bg-blush-terracotta text-primary text-xs rounded-full flex items-center gap-1">
                   {dateRange.from}{dateRange.to ? ` → ${dateRange.to}` : ""}
                   <button onClick={() => setDateRange({ from: "", to: "" })} className="hover:text-destructive"><X size={10} /></button>
                 </span>
@@ -400,7 +404,7 @@ function SearchContent() {
                     <div className="grid grid-cols-2 gap-2">
                       {[
                         { value: "", label: "All", icon: LayoutGrid },
-                        ...availableDomains.map((domain) => ({
+                        ...visibleCategoryDomains.map((domain) => ({
                           value: domain.id,
                           label: domain.name,
                           icon: getDomainIcon(domain.name),
@@ -410,9 +414,9 @@ function SearchContent() {
                           key={value}
                           onClick={() => setFilters((current) => ({ ...current, category: value, surgeryTypes: [] }))}
                           className={`py-2 px-3 rounded-lg border-2 text-sm flex items-center justify-center gap-2 transition-all ${
-                            filters.category === value 
-                              ? "border-primary bg-primary/10 text-primary font-medium" 
-                              : "border-border hover:border-primary/40 text-foreground"
+                            filters.category === value
+                              ? "border-primary bg-soft-clay text-primary font-medium"
+                              : "border-border hover:border-primary text-foreground"
                           }`}
                         >
                           <Icon size={16} />
@@ -471,7 +475,7 @@ function SearchContent() {
                 <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold mb-3">Selected procedures</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedSurgeriesWithPrices.map(({ name, price }) => (
-                    <span key={name} className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 text-primary rounded-full text-sm font-medium">
+                    <span key={name} className="flex items-center gap-2 px-3 py-1.5 bg-blush-terracotta text-primary rounded-full text-sm font-medium">
                       {name}
                       <span className="text-xs bg-primary/20 px-1.5 py-0.5 rounded-full">from ${price.toLocaleString()}</span>
                       <button onClick={() => removeSurgery(name)} className="hover:text-destructive transition-colors"><X size={12} /></button>

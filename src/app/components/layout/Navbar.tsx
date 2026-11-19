@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import "flag-icons/css/flag-icons.min.css";
 import {
   Menu,
@@ -34,6 +34,9 @@ type NotificationItem = {
 export default function Navbar() {
   const supabase = createClient();
   const router = useRouter();
+  const pathname = usePathname();
+  const isActiveNavLink = (href: string) =>
+    pathname === href || pathname.startsWith(`${href}/`);
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
@@ -293,17 +296,22 @@ export default function Navbar() {
         {/* Logo */}
         <div className="flex items-center">
           <Link href="/" className="shrink-0">
-            <span className="text-2xl font-bold text-primary">ClinicTrip</span>
+            <span className="text-2xl font-bold tracking-widest text-primary">CLINIC TRIP</span>
           </Link>
         </div>
 
-        {/* Navigation principale */}
+        {/* Navigation */}
         <div className="hidden items-center gap-8 md:flex">
           {navLinks.map((link) => (
             <Link
               key={link.href}
               href={link.href}
-              className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+              aria-current={isActiveNavLink(link.href) ? "page" : undefined}
+              className={`text-sm text-foreground transition-colors hover:text-primary ${
+                isActiveNavLink(link.href)
+                  ? "font-bold underline decoration-2 underline-offset-8"
+                  : "font-medium"
+              }`}
             >
               {link.label}
             </Link>
@@ -363,7 +371,7 @@ export default function Navbar() {
                   setLanguageMenuOpen(false);
                   setNotificationMenuOpen(false);
                 }}
-                className="flex h-full items-center gap-2 rounded-md px-2.5 transition hover:bg-accent focus:outline-none"
+                className="flex h-full w-16 items-center justify-center gap-2 rounded-md px-2.5 transition hover:bg-accent focus:outline-none"
               >
                 <span className="text-sm font-medium">
                   {currencyOptions[currency as keyof typeof currencyOptions].symbol}
@@ -430,7 +438,7 @@ export default function Navbar() {
                           onClick={() => handleNotificationClick(n.requestId)}
                           className="w-full text-left flex items-start gap-3 p-3 transition hover:bg-accent"
                         >
-                          <div className="mt-1 rounded-full bg-primary/10 p-2 text-primary shrink-0">
+                          <div className="mt-1 rounded-full bg-blush-terracotta p-2 text-primary shrink-0">
                             <MessageSquare size={14} />
                           </div>
                           <div className="flex-1 overflow-hidden">
@@ -585,7 +593,17 @@ export default function Navbar() {
         <div className="border-t border-border bg-card md:hidden">
           <div className="space-y-2 px-4 py-4">
             {navLinks.map((link) => (
-              <Link key={link.href} href={link.href} onClick={() => setMobileMenuOpen(false)} className="block py-2 text-foreground hover:text-primary">
+              <Link
+                key={link.href}
+                href={link.href}
+                onClick={() => setMobileMenuOpen(false)}
+                aria-current={isActiveNavLink(link.href) ? "page" : undefined}
+                className={`block py-2 text-foreground hover:text-primary ${
+                  isActiveNavLink(link.href)
+                    ? "font-bold underline decoration-2 underline-offset-4"
+                    : "font-medium"
+                }`}
+              >
                 {link.label}
               </Link>
             ))}

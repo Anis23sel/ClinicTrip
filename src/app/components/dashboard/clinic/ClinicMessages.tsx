@@ -330,7 +330,7 @@ const selectedRequestIdRef = useRef(selectedRequestId);
                 selectedRequestId === req.id 
                   ? "bg-accent/70 font-medium" 
                   : req.hasUnread 
-                  ? "bg-primary/10 font-semibold hover:bg-primary/15" 
+                  ? "bg-blush-terracotta font-semibold hover:bg-primary/15"
                   : "hover:bg-accent/30"
               }`}
             >

@@ -7,10 +7,15 @@ export default function Mission() {
         </h2>
 
         <p className="text-center text-lg leading-relaxed text-muted-foreground">
-          Clinic Air was founded with a simple yet powerful mission: to make
-          quality healthcare accessible to everyone, regardless of geographic
-          or financial barriers. We believe that everyone deserves access to
-          world-class medical treatments at affordable prices.
+          Our mission is to build a more ethical alternative that reimagines the medical-aesthetic
+          travel experience. We take care of your entire journey giving you direct access to top,
+          rigorously vetted clinics and specialists, curated accommodations, and VIP transfers,
+
+          all within one secure and transparent platform. Because taking care of yourself should
+          also feel like a true escape, we want every patient to experience their stay as an
+          inspiring getaway: discovering a new culture, exploring a remarkable destination, and
+          focusing on their well-being. Above all, our priority is to protect what matters most:
+          your health, your time, your money, and your privacy.
         </p>
       </div>
     </section>

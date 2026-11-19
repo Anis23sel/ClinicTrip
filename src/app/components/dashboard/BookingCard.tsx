@@ -545,7 +545,7 @@ export default function BookingCard({
                 <div className="mt-3 space-y-4">
                   <div className="border border-border rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="rounded-full bg-primary/10 w-8 h-8 flex items-center justify-center font-semibold">
+                      <div className="rounded-full bg-blush-terracotta w-8 h-8 flex items-center justify-center font-semibold">
                         1
                       </div>
 
@@ -569,7 +569,7 @@ export default function BookingCard({
 
                   <div className="border border-border rounded-lg p-4">
                     <div className="flex items-center gap-3 mb-3">
-                      <div className="rounded-full bg-primary/10 w-8 h-8 flex items-center justify-center font-semibold">
+                      <div className="rounded-full bg-blush-terracotta w-8 h-8 flex items-center justify-center font-semibold">
                         2
                       </div>
 

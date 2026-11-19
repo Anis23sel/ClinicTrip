@@ -45,8 +45,8 @@ export default function ClinicResultCard({
   return (
     <article className="relative overflow-hidden rounded-xl border border-border bg-card transition-shadow hover:shadow-lg">
       <Link href={`/clinic/${clinic.id}${query}`} className="block">
-      <div className="flex flex-col md:flex-row">
-        <div className="relative h-44 w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary/20 to-primary/10 md:w-72">
+      <div className="flex flex-col gap-4 p-4 sm:gap-5 md:flex-row md:items-stretch">
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-lg border border-border bg-gradient-to-br from-primary/20 to-blush-terracotta md:aspect-[5/4] md:w-72">
           {clinic.images.length > 0 ? (
             <img
               src={clinic.images[0].publicUrl}
@@ -64,7 +64,7 @@ export default function ClinicResultCard({
           )}
         </div>
 
-        <div className="flex-1 p-6">
+        <div className="min-w-0 flex-1 p-1 sm:p-2">
           {/* Clinic name + rating */}
           <div className="flex items-start justify-between mb-2">
             <h3 className="text-xl font-semibold">
@@ -103,7 +103,7 @@ export default function ClinicResultCard({
             {clinic.procedures.slice(0, 3).map((procedure) => (
               <span
                 key={procedure}
-                className="px-2.5 py-1 bg-primary/10 text-primary rounded-full text-xs font-medium"
+                className="px-2.5 py-1 bg-soft-clay text-primary rounded-full text-xs font-medium"
               >
                 {procedure}
               </span>
@@ -172,7 +172,7 @@ export default function ClinicResultCard({
         </div>
       </div>
       </Link>
-      <div className="absolute left-3 top-3 z-10">
+      <div className="absolute right-7 top-7 z-10 md:left-64 md:right-auto">
         <FavoriteButton
           clinicName={clinic.name}
           isFavorite={isFavorite}
