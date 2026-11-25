@@ -5,23 +5,19 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Building2, LockKeyhole, Mail, MapPin, Phone, UserRound } from "lucide-react";
-import {
-  accommodationSessionKey,
-  demoAccommodationEmail,
-  getAccommodationAccount,
-  saveAccommodationAccount,
-  type AccommodationAccount,
-} from "@/app/components/accommodation/staticAccommodation";
+import { createClient } from "@/app/utils/supabase/client";
+import type { AccommodationAccount } from "@/app/components/accommodation/types";
 
 type Props = { mode: "login" | "signup" };
 
 export default function AccommodationAuthForm({ mode }: Props) {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const isSignup = mode === "signup";
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [account, setAccount] = useState<AccommodationAccount>({
+  const [account, setAccount] = useState<Omit<AccommodationAccount, "id">>({
     email: "",
     propertyName: "",
     contactName: "",
@@ -31,11 +27,13 @@ export default function AccommodationAuthForm({ mode }: Props) {
     description: "",
   });
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setSuccess("");
 
     const normalizedEmail = email.trim().toLowerCase();
     if (password.length < 8) {
@@ -49,44 +47,68 @@ export default function AccommodationAuthForm({ mode }: Props) {
         return;
       }
 
-      const newAccount = { ...account, email: normalizedEmail };
-      setBusy(true);
-      try {
-        if (getAccommodationAccount(normalizedEmail)) {
-          setError("An account already exists for that email. Please sign in instead.");
-          setBusy(false);
-          return;
-        }
-        saveAccommodationAccount(newAccount);
-        window.sessionStorage.setItem(accommodationSessionKey, normalizedEmail);
-        router.push("/dashboard/accommodation");
-      } catch {
-        setError("We couldn't save this demo account in your browser. Check your storage settings and try again.");
-        setBusy(false);
+      if (!account.propertyName.trim() || !account.contactName.trim() || !account.phone.trim() || !account.city.trim() || !account.address.trim()) {
+        setError("Complete all property and contact fields before continuing.");
+        return;
       }
-      return;
     }
 
     setBusy(true);
     try {
-      if (normalizedEmail !== demoAccommodationEmail && !getAccommodationAccount(normalizedEmail)) {
-        setError("We couldn't find a demo account for that email. Register your accommodation first.");
-        setBusy(false);
-        return;
+      if (isSignup) {
+        const { data, error: signupError } = await supabase.auth.signUp({
+          email: normalizedEmail,
+          password,
+          options: {
+            data: {
+              account_type: "accommodation",
+              property_name: account.propertyName.trim(),
+              contact_name: account.contactName.trim(),
+              phone: account.phone.trim(),
+              city: account.city.trim(),
+              address: account.address.trim(),
+              description: account.description.trim(),
+            },
+          },
+        });
+
+        if (signupError) throw signupError;
+        if (!data.user) throw new Error("We couldn't create your account. Please try again.");
+        if (!data.session) {
+          setSuccess("Account created. Check your email to confirm your address, then sign in.");
+          return;
+        }
+      } else {
+        const { error: signinError } = await supabase.auth.signInWithPassword({
+          email: normalizedEmail,
+          password,
+        });
+        if (signinError) throw signinError;
+
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) throw new Error("Please sign in again to continue.");
+
+        const { data: partner, error: partnerError } = await supabase
+          .from("accommodation_partners")
+          .select("user_id")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (partnerError) throw partnerError;
+        if (!partner) {
+          const { error: signoutError } = await supabase.auth.signOut();
+          if (signoutError) throw signoutError;
+          throw new Error("This account is not registered as an accommodation partner.");
+        }
       }
 
-      window.sessionStorage.setItem(accommodationSessionKey, normalizedEmail);
       router.push("/dashboard/accommodation");
-    } catch {
-      setError("We couldn't access your demo account in this browser. Check your storage settings and try again.");
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "We couldn't complete your request. Please try again.");
+    } finally {
       setBusy(false);
     }
-  };
-
-  const fillDemoAccount = () => {
-    setEmail(demoAccommodationEmail);
-    setPassword("demo1234");
-    setError("");
   };
 
   const fieldClass =
@@ -117,11 +139,11 @@ export default function AccommodationAuthForm({ mode }: Props) {
             </h1>
             <p className="mt-4 leading-7 text-primary-foreground/80">
               {isSignup
-                ? "Create a preview listing and explore how your property can support patients visiting Istanbul."
-                : "Manage your property preview, room options, and patient stay requests."}
+                ? "Create a property listing for patients visiting Istanbul."
+                : "Manage your property details and live room availability."}
             </p>
             <div className="mt-8 rounded-xl border border-white/20 bg-white/10 p-4 text-sm leading-6">
-              This is a front-end prototype.
+              Your listing and room rates are saved to the ClinicTrip database.
             </div>
           </div>
         </section>
@@ -135,13 +157,18 @@ export default function AccommodationAuthForm({ mode }: Props) {
               {isSignup ? "Register your property" : "Partner sign in"}
             </h2>
             <p className="mt-2 text-sm text-muted-foreground">
-              {isSignup ? "Set up your accommodation preview." : "Access your accommodation dashboard."}
+              {isSignup ? "Set up your accommodation listing." : "Access your accommodation dashboard."}
             </p>
           </div>
 
           {error && (
             <p role="alert" className="mb-5 rounded-lg border border-error/30 bg-error-background p-3 text-sm text-error-foreground">
               {error}
+            </p>
+          )}
+          {success && (
+            <p role="status" className="mb-5 rounded-lg border border-success/30 bg-success-background p-3 text-sm text-success-foreground">
+              {success}
             </p>
           )}
 
@@ -169,6 +196,7 @@ export default function AccommodationAuthForm({ mode }: Props) {
                   <input required value={account.city} onChange={(event) => setAccount({ ...account, city: event.target.value })} placeholder="City, country" className={fieldClass} />
                 </label>
                 <input required value={account.address} onChange={(event) => setAccount({ ...account, address: event.target.value })} placeholder="Property address" className="w-full rounded-lg border border-border bg-input-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-ring" />
+                <textarea value={account.description} onChange={(event) => setAccount({ ...account, description: event.target.value })} placeholder="Tell patients about your property" rows={3} className="w-full rounded-lg border border-border bg-input-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-ring" />
               </>
             )}
 
@@ -184,12 +212,6 @@ export default function AccommodationAuthForm({ mode }: Props) {
             </label>
             {isSignup && (
               <input required minLength={8} type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} placeholder="Confirm password" className="w-full rounded-lg border border-border bg-input-background px-4 py-3 text-foreground outline-none focus:ring-2 focus:ring-ring" />
-            )}
-
-            {!isSignup && (
-              <button type="button" onClick={fillDemoAccount} className="text-sm font-medium text-primary underline-offset-4 hover:underline">
-                Use demo account: {demoAccommodationEmail}
-              </button>
             )}
 
             <button type="submit" disabled={busy} className="w-full rounded-lg bg-primary px-5 py-3 font-semibold text-primary-foreground transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60">
@@ -209,11 +231,6 @@ export default function AccommodationAuthForm({ mode }: Props) {
               {isSignup ? "Choose your account type" : "Use regular sign in"}
             </Link>
           </p>
-          {!isSignup && (
-            <p className="mt-4 text-center text-xs text-muted-foreground">
-              Demo sign-in accepts any password; no password is stored or verified.
-            </p>
-          )}
         </section>
       </div>
     </main>

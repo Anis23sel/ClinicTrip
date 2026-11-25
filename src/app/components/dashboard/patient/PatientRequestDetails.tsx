@@ -21,10 +21,13 @@ type RequestDetails = {
   clinicApproved: boolean;
 };
 
-const accommodationOptions = [
-  { id: "premium", name: "Partner Hotel Premium", detail: "Double room · King-size bed · Breakfast included · 5 min from clinic · per night", price: 60 },
-  { id: "standard", name: "Partner Hotel Standard", detail: "Double room · King-size bed · Breakfast included · 10 min from clinic · per night", price: 40 },
-];
+type AccommodationOption = {
+  id: string;
+  name: string;
+  detail: string;
+  roomName: string;
+  price: number;
+};
 
 function formatDate(value: string | null) {
   if (!value) return "Not specified";
@@ -53,6 +56,9 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [accommodationId, setAccommodationId] = useState("");
+  const [accommodationOptions, setAccommodationOptions] = useState<AccommodationOption[]>([]);
+  const [accommodationsLoading, setAccommodationsLoading] = useState(true);
+  const [accommodationError, setAccommodationError] = useState("");
   const [accommodationNotNeeded, setAccommodationNotNeeded] = useState(false);
   const [checkOutByRequest, setCheckOutByRequest] = useState<Record<string, string>>({});
   const [transferChoice, setTransferChoice] = useState<"needed" | "not_needed" | null>(null);
@@ -120,6 +126,72 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
     void loadDetails();
     return () => { cancelled = true; };
   }, [requestId, supabase]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadAccommodations = async () => {
+      try {
+        const [{ data: properties, error: propertyError }, { data: rooms, error: roomsError }] = await Promise.all([
+          supabase
+            .from("accommodations")
+            .select("id, name, city, distance_from_clinic")
+            .eq("is_active", true)
+            .order("name"),
+          supabase
+            .from("accommodation_rooms")
+            .select("id, accommodation_id, room_name, price_per_night, available_rooms")
+            .eq("is_active", true)
+            .gt("available_rooms", 0)
+            .order("price_per_night"),
+        ]);
+        if (propertyError) throw propertyError;
+        if (roomsError) throw roomsError;
+
+        const availableOptions = (properties ?? []).flatMap((property) => {
+          const location = [property.city, property.distance_from_clinic].filter(Boolean).join(" · ");
+          return (rooms ?? [])
+            .filter((room) => room.accommodation_id === property.id)
+            .map((room) => ({
+              id: room.id,
+              name: property.name,
+              detail: [room.room_name, `${room.available_rooms} available`, location].filter(Boolean).join(" · "),
+              roomName: room.room_name,
+              price: Number(room.price_per_night),
+            }));
+        });
+
+        if (!cancelled) {
+          setAccommodationOptions(availableOptions);
+          setAccommodationId((current) => availableOptions.some((option) => option.id === current) ? current : "");
+          setAccommodationError("");
+        }
+      } catch (loadError) {
+        if (!cancelled) setAccommodationError(loadError instanceof Error ? loadError.message : "We couldn't load accommodation options.");
+      } finally {
+        if (!cancelled) setAccommodationsLoading(false);
+      }
+    };
+
+    void loadAccommodations();
+    const channel = supabase
+      .channel("patient-accommodations")
+      .on("postgres_changes", { event: "*", schema: "public", table: "accommodations" }, () => {
+        void loadAccommodations();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "accommodation_rooms" }, () => {
+        void loadAccommodations();
+      })
+      .subscribe((status) => {
+        if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && !cancelled) {
+          setAccommodationError("Live accommodation updates are unavailable. Refresh to reload the latest options.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [supabase]);
 
   const clinicIntervalNights = daysBetween(details?.finalStartDate ?? null, details?.finalEndDate ?? null);
   const hasConfirmedInterval = clinicIntervalNights !== null && clinicIntervalNights >= 0;
@@ -191,12 +263,17 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
         <article className={`relative rounded-xl border border-border bg-card p-5 transition-opacity ${optionalLocked ? "pointer-events-none select-none opacity-45 grayscale" : ""}`}>
           <div className="mb-5 flex items-center gap-3"><span className="rounded-lg bg-primary/10 p-2 text-primary"><BedDouble size={20} /></span><div><h3 className="text-lg font-semibold">Accommodation</h3><p className="text-sm text-muted-foreground">Choose a partner hotel</p></div></div>
           <div className="space-y-3">
+            {accommodationsLoading && <p className="py-3 text-sm text-muted-foreground">Loading available accommodations...</p>}
+            {accommodationError && <p role="alert" className="rounded-lg bg-destructive/5 p-3 text-sm text-destructive">{accommodationError}</p>}
+            {!accommodationsLoading && !accommodationError && accommodationOptions.length === 0 && (
+              <p className="rounded-lg border border-dashed border-border p-4 text-sm text-muted-foreground">No partner accommodations with available rooms are listed right now.</p>
+            )}
             {accommodationOptions.map((option) => (
               <button
                 type="button"
                 key={option.id}
                 aria-pressed={!accommodationNotNeeded && accommodationId === option.id}
-                disabled={!hasConfirmedInterval}
+                disabled={!hasConfirmedInterval || accommodationsLoading}
                 onClick={() => {
                   setAccommodationNotNeeded(false);
                   setAccommodationId(option.id);
@@ -373,7 +450,7 @@ export default function PatientRequestDetails({ requestId }: { requestId: string
             {accommodation.name} · {nights} night{nights === 1 ? "" : "s"}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Double room · King-size bed · Breakfast included
+          {accommodation.roomName}
           </span>
         </span>
         <span className="font-semibold">{money(accommodationTotal)}</span>

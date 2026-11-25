@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   BedDouble,
   Building2,
   CalendarDays,
-  Check,
   ChevronRight,
   ClipboardList,
   DoorOpen,
@@ -17,40 +16,11 @@ import {
   Save,
   Star,
   Users,
-  X,
 } from "lucide-react";
-import {
-  accommodationSessionKey,
-  demoAccommodation,
-  getAccommodationAccount,
-  saveAccommodationAccount,
-  type AccommodationAccount,
-} from "@/app/components/accommodation/staticAccommodation";
+import { createClient } from "@/app/utils/supabase/client";
+import type { AccommodationAccount, AccommodationRoom } from "@/app/components/accommodation/types";
 
 type Tab = "overview" | "property" | "rooms" | "reservations";
-type ReservationStatus = "Pending" | "Confirmed" | "Declined";
-type Reservation = {
-  id: string;
-  guest: string;
-  checkIn: string;
-  checkOut: string;
-  room: string;
-  guests: number;
-  status: ReservationStatus;
-};
-type Room = { id: number; name: string; price: number; available: number };
-
-const initialReservations: Reservation[] = [
-  { id: "CT-2048", guest: "Olivia Carter", checkIn: "Nov 18, 2026", checkOut: "Nov 24, 2026", room: "Deluxe Double", guests: 2, status: "Pending" },
-  { id: "CT-2047", guest: "Noah Williams", checkIn: "Nov 20, 2026", checkOut: "Nov 27, 2026", room: "Accessible Suite", guests: 1, status: "Confirmed" },
-  { id: "CT-2046", guest: "Amelia Brown", checkIn: "Nov 22, 2026", checkOut: "Nov 25, 2026", room: "Standard Twin", guests: 2, status: "Pending" },
-];
-
-const initialRooms: Room[] = [
-  { id: 1, name: "Standard Twin", price: 85, available: 6 },
-  { id: 2, name: "Deluxe Double", price: 120, available: 4 },
-  { id: 3, name: "Accessible Suite", price: 165, available: 2 },
-];
 
 const tabs: { id: Tab; label: string; icon: typeof Building2 }[] = [
   { id: "overview", label: "Overview", icon: Building2 },
@@ -61,66 +31,226 @@ const tabs: { id: Tab; label: string; icon: typeof Building2 }[] = [
 
 export default function AccommodationDashboard() {
   const router = useRouter();
+  const [supabase] = useState(() => createClient());
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [account, setAccount] = useState<AccommodationAccount | null>(null);
-  const [reservations, setReservations] = useState(initialReservations);
-  const [rooms, setRooms] = useState(initialRooms);
+  const [rooms, setRooms] = useState<AccommodationRoom[]>([]);
   const [isEditing, setIsEditing] = useState(false);
-  const [form, setForm] = useState<AccommodationAccount>(demoAccommodation);
+  const [form, setForm] = useState<Omit<AccommodationAccount, "id">>({
+    email: "",
+    propertyName: "",
+    contactName: "",
+    phone: "",
+    city: "",
+    address: "",
+    description: "",
+  });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    try {
-      const email = window.sessionStorage.getItem(accommodationSessionKey);
-      if (!email) {
-        router.replace("/accommodation/login");
-        return;
+    let cancelled = false;
+    const loadDashboard = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) {
+          router.replace("/accommodation/login");
+          return;
+        }
+
+        const { data: partner, error: partnerError } = await supabase
+          .from("accommodation_partners")
+          .select("accommodation_id, email, contact_name, phone")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (partnerError) throw partnerError;
+        if (!partner) {
+          const { error: signoutError } = await supabase.auth.signOut();
+          if (signoutError) throw signoutError;
+          router.replace("/accommodation/login");
+          return;
+        }
+
+        const [{ data: property, error: propertyError }, { data: roomRows, error: roomsError }] = await Promise.all([
+          supabase
+            .from("accommodations")
+            .select("id, name, city, address, description")
+            .eq("id", partner.accommodation_id)
+            .single(),
+          supabase
+            .from("accommodation_rooms")
+            .select("id, room_name, price_per_night, available_rooms")
+            .eq("accommodation_id", partner.accommodation_id)
+            .order("room_name"),
+        ]);
+        if (propertyError) throw propertyError;
+        if (roomsError) throw roomsError;
+        if (!property) throw new Error("We couldn't find the property linked to your account.");
+
+        if (cancelled) return;
+        const nextAccount: AccommodationAccount = {
+          id: property.id,
+          email: partner.email,
+          propertyName: property.name,
+          contactName: partner.contact_name,
+          phone: partner.phone,
+          city: property.city,
+          address: property.address,
+          description: property.description ?? "",
+        };
+        setAccount(nextAccount);
+        setForm({
+          email: nextAccount.email,
+          propertyName: nextAccount.propertyName,
+          contactName: nextAccount.contactName,
+          phone: nextAccount.phone,
+          city: nextAccount.city,
+          address: nextAccount.address,
+          description: nextAccount.description,
+        });
+        setRooms((roomRows ?? []).map((room) => ({
+          id: room.id,
+          name: room.room_name,
+          price: Number(room.price_per_night),
+          available: room.available_rooms,
+        })));
+        setError("");
+      } catch (loadError) {
+        if (!cancelled) setError(loadError instanceof Error ? loadError.message : "We couldn't load your accommodation data.");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-      const signedInAccount = getAccommodationAccount(email);
-      if (!signedInAccount) {
-        window.sessionStorage.removeItem(accommodationSessionKey);
-        router.replace("/accommodation/login");
-        return;
-      }
-      setAccount(signedInAccount);
-      setForm(signedInAccount);
-    } catch {
-      setError("We couldn't load this browser's demo data. Check your storage settings and refresh.");
-    } finally {
-      setLoading(false);
+    };
+
+    void loadDashboard();
+
+    const channel = supabase
+      .channel("accommodation-dashboard")
+      .on("postgres_changes", { event: "*", schema: "public", table: "accommodations" }, () => {
+        void loadDashboard();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "accommodation_rooms" }, () => {
+        void loadDashboard();
+      })
+      .subscribe((status) => {
+        if ((status === "CHANNEL_ERROR" || status === "TIMED_OUT") && !cancelled) {
+          setError("Live updates are unavailable. Refresh the page to reload the latest data.");
+        }
+      });
+
+    return () => {
+      cancelled = true;
+      void supabase.removeChannel(channel);
+    };
+  }, [router, supabase]);
+
+  const signOut = async () => {
+    const { error: signoutError } = await supabase.auth.signOut();
+    if (signoutError) {
+      setError(signoutError.message);
+      return;
     }
-  }, [router]);
-
-  const pendingCount = useMemo(
-    () => reservations.filter((reservation) => reservation.status === "Pending").length,
-    [reservations],
-  );
-
-  const signOut = () => {
-    window.sessionStorage.removeItem(accommodationSessionKey);
     router.replace("/accommodation/login");
   };
 
-  const saveProfile = (event: React.FormEvent<HTMLFormElement>) => {
+  const saveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!account) return;
-    try {
-      saveAccommodationAccount({ ...form, email: account.email });
-      setAccount({ ...form, email: account.email });
-      setIsEditing(false);
-      setNotice("Property profile saved in this browser.");
-    } catch {
-      setError("We couldn't save your changes in this browser. Check your storage settings and try again.");
+    setError("");
+    setNotice("");
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError) {
+      setError(userError.message);
+      return;
     }
+    if (!user) {
+      router.replace("/accommodation/login");
+      return;
+    }
+    const [{ error: propertyError }, { error: partnerError }] = await Promise.all([
+      supabase
+        .from("accommodations")
+        .update({
+          name: form.propertyName.trim(),
+          city: form.city.trim(),
+          address: form.address.trim(),
+          description: form.description.trim(),
+        })
+        .eq("id", account.id)
+        .select("id")
+        .single(),
+      supabase
+        .from("accommodation_partners")
+        .update({
+          contact_name: form.contactName.trim(),
+          phone: form.phone.trim(),
+        })
+        .eq("user_id", user.id)
+        .select("user_id")
+        .single(),
+    ]);
+    if (propertyError || partnerError) {
+      setError(propertyError?.message ?? partnerError?.message ?? "We couldn't save your property details.");
+      return;
+    }
+    setAccount({
+      ...account,
+      propertyName: form.propertyName.trim(),
+      contactName: form.contactName.trim(),
+      phone: form.phone.trim(),
+      city: form.city.trim(),
+      address: form.address.trim(),
+      description: form.description.trim(),
+    });
+    setIsEditing(false);
+    setNotice("Property profile saved.");
   };
 
-  const updateReservation = (id: string, status: ReservationStatus) => {
-    setReservations((current) =>
-      current.map((reservation) => (reservation.id === id ? { ...reservation, status } : reservation)),
-    );
-    setNotice(`Stay request ${id} marked ${status.toLowerCase()}.`);
+  const updateRoom = async (room: AccommodationRoom) => {
+    setError("");
+    const { error: updateError } = await supabase
+      .from("accommodation_rooms")
+      .update({
+        room_name: room.name.trim(),
+        price_per_night: room.price,
+        available_rooms: room.available,
+      })
+      .eq("id", room.id)
+      .select("id")
+      .single();
+    if (updateError) {
+      setError(updateError.message);
+      return;
+    }
+    setNotice(`${room.name.trim()} saved.`);
+  };
+
+  const addRoom = async () => {
+    if (!account) return;
+    setError("");
+    const { data: room, error: insertError } = await supabase
+      .from("accommodation_rooms")
+      .insert({
+        accommodation_id: account.id,
+        room_name: "New room type",
+        price_per_night: 100,
+        available_rooms: 1,
+      })
+      .select("id, room_name, price_per_night, available_rooms")
+      .single();
+    if (insertError) {
+      setError(insertError.message);
+      return;
+    }
+    setRooms((current) => [...current, {
+      id: room.id,
+      name: room.room_name,
+      price: Number(room.price_per_night),
+      available: room.available_rooms,
+    }]);
+    setNotice("Room type added.");
   };
 
   if (loading) {
@@ -187,10 +317,10 @@ export default function AccommodationDashboard() {
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   {[
-                    { label: "Stay requests", value: reservations.length, note: "All time", icon: ClipboardList },
-                    { label: "Needs your response", value: pendingCount, note: "Pending requests", icon: CalendarDays },
+                    { label: "Stay requests", value: 0, note: "No requests yet", icon: ClipboardList },
+                    { label: "Needs your response", value: 0, note: "Pending requests", icon: CalendarDays },
                     { label: "Room types", value: rooms.length, note: "Currently listed", icon: DoorOpen },
-                    { label: "Guest rating", value: "4.9", note: "From 38 reviews", icon: Star },
+                    { label: "Guest rating", value: "—", note: "No reviews yet", icon: Star },
                   ].map(({ label, value, note, icon: Icon }) => (
                     <div key={label} className="rounded-xl border border-border bg-card p-5">
                       <div className="flex items-center justify-between text-muted-foreground">
@@ -208,7 +338,7 @@ export default function AccommodationDashboard() {
                       <h3 className="font-semibold">Recent stay requests</h3>
                       <button onClick={() => setActiveTab("reservations")} className="text-sm font-medium text-primary hover:underline">View all</button>
                     </div>
-                    <ReservationList reservations={reservations.slice(0, 3)} onUpdate={updateReservation} compact />
+                    <p className="py-5 text-sm text-muted-foreground">Stay requests will appear here when bookings are connected.</p>
                   </div>
                   <div className="rounded-xl border border-border bg-card p-5">
                     <div className="flex items-start gap-3">
@@ -265,19 +395,19 @@ export default function AccommodationDashboard() {
               <div className="rounded-xl border border-border bg-card p-5 sm:p-7">
                 <div className="mb-6">
                   <h2 className="text-2xl font-bold">Rooms & rates</h2>
-                  <p className="mt-1 text-sm text-muted-foreground">Example room inventory for your property preview.</p>
+                  <p className="mt-1 text-sm text-muted-foreground">Set real room rates and availability for patients.</p>
                 </div>
                 <div className="space-y-3">
                   {rooms.map((room) => (
                     <div key={room.id} className="grid gap-4 rounded-lg border border-border p-4 sm:grid-cols-[1fr_130px_130px] sm:items-center">
-                      <div className="flex items-center gap-3"><div className="rounded-lg bg-accent p-2 text-primary"><BedDouble size={18} /></div><div><p className="font-semibold">{room.name}</p><p className="text-xs text-muted-foreground">{room.available} rooms available</p></div></div>
-                      <label className="text-sm"><span className="mb-1 block text-xs text-muted-foreground">Rate / night ($)</span><input aria-label={`${room.name} rate per night`} type="number" min="1" value={room.price} onChange={(event) => setRooms((current) => current.map((item) => item.id === room.id ? { ...item, price: Number(event.target.value) } : item))} className="w-full rounded-md border border-border bg-input-background px-3 py-2" /></label>
-                      <label className="text-sm"><span className="mb-1 block text-xs text-muted-foreground">Available rooms</span><input aria-label={`${room.name} available rooms`} type="number" min="0" value={room.available} onChange={(event) => setRooms((current) => current.map((item) => item.id === room.id ? { ...item, available: Number(event.target.value) } : item))} className="w-full rounded-md border border-border bg-input-background px-3 py-2" /></label>
+                      <div className="flex items-center gap-3"><div className="rounded-lg bg-accent p-2 text-primary"><BedDouble size={18} /></div><label className="min-w-0 flex-1"><span className="sr-only">Room type name</span><input aria-label="Room type name" value={room.name} onChange={(event) => setRooms((current) => current.map((item) => item.id === room.id ? { ...item, name: event.target.value } : item))} onBlur={() => void updateRoom(room)} className="w-full rounded-md border border-border bg-input-background px-3 py-2 font-semibold" /><span className="text-xs text-muted-foreground">{room.available} rooms available</span></label></div>
+                      <label className="text-sm"><span className="mb-1 block text-xs text-muted-foreground">Rate / night ($)</span><input aria-label={`${room.name} rate per night`} type="number" min="1" step="0.01" value={room.price} onChange={(event) => setRooms((current) => current.map((item) => item.id === room.id ? { ...item, price: Number(event.target.value) } : item))} onBlur={() => void updateRoom(room)} className="w-full rounded-md border border-border bg-input-background px-3 py-2" /></label>
+                      <label className="text-sm"><span className="mb-1 block text-xs text-muted-foreground">Available rooms</span><input aria-label={`${room.name} available rooms`} type="number" min="0" step="1" value={room.available} onChange={(event) => setRooms((current) => current.map((item) => item.id === room.id ? { ...item, available: Number(event.target.value) } : item))} onBlur={() => void updateRoom(room)} className="w-full rounded-md border border-border bg-input-background px-3 py-2" /></label>
                     </div>
                   ))}
                 </div>
-                <button onClick={() => { setRooms((current) => [...current, { id: Date.now(), name: "New room type", price: 100, available: 1 }]); setNotice("A sample room type was added."); }} className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent"><Plus size={16} /> Add room type</button>
-                <p className="mt-4 text-xs text-muted-foreground">Room edits are temporary and will reset when this page is refreshed.</p>
+                {rooms.length === 0 && <p className="mt-4 text-sm text-muted-foreground">Add at least one room type with availability to show your property to patients.</p>}
+                <button onClick={() => void addRoom()} className="mt-5 inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2.5 text-sm font-medium hover:bg-accent"><Plus size={16} /> Add room type</button>
               </div>
             )}
 
@@ -286,11 +416,10 @@ export default function AccommodationDashboard() {
                 <div className="mb-6 flex items-end justify-between gap-4">
                   <div>
                     <h2 className="text-2xl font-bold">Stay requests</h2>
-                    <p className="mt-1 text-sm text-muted-foreground">Review sample requests from patients planning treatment.</p>
+                    <p className="mt-1 text-sm text-muted-foreground">Patient stay requests are not connected to this dashboard yet.</p>
                   </div>
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-900">{pendingCount} pending</span>
                 </div>
-                <ReservationList reservations={reservations} onUpdate={updateReservation} />
+                <p className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">No stay requests are available yet.</p>
               </div>
             )}
           </section>
@@ -307,33 +436,5 @@ function ProfileField({ label, value, disabled, onChange }: { label: string; val
       <span className="mb-2 block text-sm font-medium">{label}</span>
       <input required value={value} disabled={disabled} onChange={(event) => onChange(event.target.value)} className="w-full rounded-lg border border-border bg-input-background px-4 py-3 outline-none focus:ring-2 focus:ring-ring disabled:bg-accent disabled:text-muted-foreground" />
     </label>
-  );
-}
-
-function ReservationList({ reservations, onUpdate, compact = false }: { reservations: Reservation[]; onUpdate: (id: string, status: ReservationStatus) => void; compact?: boolean }) {
-  return (
-    <div className="space-y-3">
-      {reservations.map((reservation) => (
-        <article key={reservation.id} className="rounded-lg border border-border p-4">
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <div>
-              <p className="font-semibold">{reservation.guest}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{reservation.id} · {reservation.guests} guests</p>
-            </div>
-            <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${reservation.status === "Pending" ? "bg-amber-100 text-amber-900" : reservation.status === "Confirmed" ? "bg-success-background text-success-foreground" : "bg-error-background text-error-foreground"}`}>{reservation.status}</span>
-          </div>
-          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-            <p><span className="text-muted-foreground">Room:</span> {reservation.room}</p>
-            <p><span className="text-muted-foreground">Dates:</span> {reservation.checkIn} – {reservation.checkOut}</p>
-          </div>
-          {!compact && reservation.status === "Pending" && (
-            <div className="mt-4 flex gap-2">
-              <button onClick={() => onUpdate(reservation.id, "Confirmed")} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground hover:opacity-90"><Check size={14} /> Confirm</button>
-              <button onClick={() => onUpdate(reservation.id, "Declined")} className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-xs font-semibold hover:bg-accent"><X size={14} /> Decline</button>
-            </div>
-          )}
-        </article>
-      ))}
-    </div>
   );
 }

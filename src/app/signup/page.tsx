@@ -13,6 +13,7 @@ export default function Signup() {
 
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [formData, setFormData] = useState({
@@ -76,7 +77,7 @@ export default function Signup() {
     }
 
     if (!formData.email.trim()) errors.email = "Email is required.";
-    if (!formData.password) errors.password = "Password is required.";
+    if (formData.password.length < 8) errors.password = "Password must be at least 8 characters.";
     if (formData.password !== formData.confirmPassword) {
       errors.confirmPassword = "Passwords do not match!";
     }
@@ -93,6 +94,7 @@ export default function Signup() {
   ) => {
     e.preventDefault();
     setErrorMessage(null);
+    setSuccessMessage(null);
 
     if (!validateForm()) {
       setErrorMessage("Please fix the errors below before submitting.");
@@ -102,10 +104,29 @@ export default function Signup() {
     setLoading(true);
 
     try {
-      // Create the authentication user
+      const nameParts = formData.name.trim().split(/\s+/);
+      const metadata = formData.userType === "patient"
+        ? {
+            account_type: "patient",
+            first_name: nameParts[0] ?? "",
+            last_name: nameParts.slice(1).join(" "),
+            gender: formData.gender,
+            phone: formData.phone.trim(),
+          }
+        : {
+            account_type: "clinic",
+            clinic_name: formData.clinicName.trim(),
+            website: formData.website.trim() || null,
+            country: formData.country,
+            address: formData.address.trim(),
+            phone: formData.phone.trim(),
+            city_id: formData.cityId,
+          };
+
       const { data, error } = await supabase.auth.signUp({
-        email: formData.email,
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
+        options: { data: metadata },
       });
 
       if (error) {
@@ -118,73 +139,12 @@ export default function Signup() {
         return;
       }
 
-      const userId = data.user.id;
-
-      // Create the profile
-      const { data: profile, error: profileError } = await supabase
-        .from("profiles")
-        .insert({
-          user_id: userId,
-          role: formData.userType,
-        })
-        .select("id")
-        .single();
-
-      if (profileError) {
-        setErrorMessage(profileError.message);
+      if (!data.session) {
+        setSuccessMessage("Account created. Check your email to confirm your address, then sign in.");
         return;
       }
 
-      const profileId = profile.id;
-
-      // Create patient record
-      if (formData.userType === "patient") {
-        const nameParts = formData.name.trim().split(" ");
-        const firstName = nameParts[0];
-        const lastName = nameParts.slice(1).join(" ");
-
-        const { error: patientError } = await supabase
-          .from("patients")
-          .insert({
-            profile_id: profileId,
-            first_name: firstName,
-            last_name: lastName,
-            gender: formData.gender,
-            phone: formData.phone,
-            email: formData.email,
-          });
-
-        if (patientError) {
-          setErrorMessage(patientError.message);
-          return;
-        }
-
-        router.push("/dashboard/patient");
-      }
-
-      // Create clinic record
-      if (formData.userType === "clinic") {
-        const { error: clinicError } = await supabase
-          .from("clinics")
-          .insert({
-            profile_id: profileId,
-            clinic_name: formData.clinicName,
-            website: formData.website || null,
-            address: formData.address,
-            phone: formData.phone,
-            country: formData.country,
-            city_id: formData.cityId,
-            email: formData.email,
-          });
-
-        if (clinicError) {
-          setErrorMessage(clinicError.message);
-          return;
-        }
-
-        router.push("/dashboard/clinic");
-      }
-
+      router.push(formData.userType === "patient" ? "/dashboard/patient" : "/dashboard/clinic");
     } catch (error) {
       console.error("Signup failed:", error);
       setErrorMessage("Something went wrong, Please try again.");
@@ -216,6 +176,11 @@ export default function Signup() {
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-error/30 bg-error-background p-3 text-sm text-error-foreground">
             <AlertCircle size={18} className="shrink-0 text-error" />
             <span>{errorMessage}</span>
+          </div>
+        )}
+        {successMessage && (
+          <div role="status" className="mb-4 rounded-lg border border-success/30 bg-success-background p-3 text-sm text-success-foreground">
+            {successMessage}
           </div>
         )}
 
